@@ -7,112 +7,164 @@
 
 ## Summary
 
-A Discord bot that manages host volunteering for recurring meetups through Google Sheets backend. The bot enables hosts to volunteer for specific dates or set up recurring patterns, view schedules, cancel commitments, and automatically warns about unassigned dates. All data is stored in Google Sheets as the authoritative source, with local caching for resilience. The system includes role-based access control, comprehensive audit logging, and graceful degradation when APIs are unavailable.
+A Discord bot that manages host volunteering for recurring meetups through a Google Sheets backend, with automated reminders and warnings. The bot enables hosts to volunteer for specific dates or set up recurring patterns, view schedules, and receive automated warnings about unassigned dates. Technical approach: Python 3.11+ with discord.py for Discord integration, gspread for Google Sheets API, JSON file-based caching for resilience, and pytest for testing. All data is stored in Google Sheets as the authoritative source with local caching for offline resilience.
 
 ## Technical Context
 
-<!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-  for the project. The structure here is presented in advisory capacity to guide
-  the iteration process.
--->
-
 **Language/Version**: Python 3.11+  
-**Primary Dependencies**: discord.py 2.3+ (Discord API), gspread 5.12+ + google-auth (Google Sheets API), python-dateutil 2.8+ (date parsing for recurring patterns)  
-**Storage**: Google Sheets (authoritative) + local JSON cache file (resilience layer)  
-**Testing**: pytest 7.4+ with pytest-asyncio and pytest-mock (contract tests for Discord/Google Sheets APIs)  
-**Target Platform**: Linux server (deployable via Docker, systemd, or direct execution)  
-**Project Type**: single (Discord bot application)
-**Constraints**: Google Sheets API quota limits (per-user-per-100-seconds, per-project-per-day); Must cache to handle API failures gracefully; Must implement exponential backoff for rate limits  
+**Primary Dependencies**: 
+- discord.py>=2.3.0 (Discord API integration with slash commands)
+- gspread>=5.12.0 (Google Sheets API client)
+- google-auth>=2.23.0 (Service account authentication)
+- python-dateutil>=2.8.0 (Recurring pattern date calculations)
+
+**Storage**: 
+- Google Sheets (authoritative source): Schedule, RecurringPatterns, AuditLog, Configuration sheets
+- Local JSON cache file (resilience): `cache.json` for offline operation and API quota management
+
+**Testing**: pytest>=7.4.0 with pytest-asyncio>=0.21.0 and pytest-mock>=3.12.0 for async Discord bot testing and API mocking
+
+**Target Platform**: Linux server (production), macOS/Linux (development). Bot runs as a long-lived process with systemd or Docker deployment options.
+
+**Project Type**: Single project (Discord bot application)
+
+**Constraints**:
+- Google Sheets API quota limits (per user per 100 seconds, per project per day) - must implement batching and caching
+- Single timezone (PST) for MVP - all dates interpreted/displayed in PST
+- Strict date format: YYYY-MM-DD only (rejects all other formats)
+- First-wins concurrent booking conflict resolution
+- Fail-fast behavior when API rate limits exceeded
+
+**Scale/Scope**:
+- Target: Community Discord server with ~50-200 active hosts
+- Schedule: Up to 12 weeks of upcoming dates
+- Commands: 8 user commands + 3 administrative commands
+- Data volume: ~100-500 scheduled dates, ~10-50 recurring patterns
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-**Constitution Version**: 1.3.0
+**Constitution Version**: 1.4.0
 
-### I. API Quota Management (NON-NEGOTIABLE) ✅
-- **Status**: REQUIREMENT - Must implement batching, caching, exponential backoff
-- **Implementation**: Google Sheets API calls will be batched; cache with TTL; exponential backoff with jitter for 429 responses; quota monitoring and logging
-- **Risk**: LOW - Standard patterns available
+### Principle I: API Quota Management ✅
+- **Status**: COMPLIANT
+- **Implementation**:**
+  - gspread supports batch operations for Google Sheets API calls
+  - JSON file cache reduces redundant API calls with TTL-based invalidation
+  - Exponential backoff with jitter will be implemented for rate limit errors (429 responses)
+  - Cache TTL: 300 seconds (5 minutes) default, configurable
+  - API quota usage tracking in cache metadata
+  - All quality enforcement (linting, formatting) runs locally (pre-commit hooks)
 
-### II. Resilience & Fallback Strategy ✅
-- **Status**: REQUIREMENT - Google Sheets is authoritative; cache last known state
-- **Implementation**: Local cache file; serve from cache with staleness warning when API unavailable; automatic sync recovery
-- **Risk**: LOW - Design aligns with requirement
+### Principle II: Resilience & Fallback Strategy ✅
+- **Status**: COMPLIANT
+  - Google Sheets is authoritative data source; bot caches last known state
+  - When Google Sheets API unavailable, bot serves from cache with staleness warning
+  - Clear error messages direct users to manual Google Sheets editing
+  - Automatic recovery and sync when API becomes available
+  - Write operations will be idempotent to support safe retries
+  - All failures logged with actionable context
 
-### III. Test Coverage for External Dependencies ✅
-- **Status**: REQUIREMENT - Contract tests for Discord and Google Sheets APIs
-- **Implementation**: Mock APIs in unit tests; contract tests verify request/response formats; rate limit scenarios tested
-- **Risk**: LOW - Standard testing approach
+### Principle III: Test Coverage for External Dependencies ✅
+- **Status**: COMPLIANT
+  - Contract tests will verify Discord API request/response formats
+  - Contract tests will verify Google Sheets API request/response formats
+  - Tests will cover rate limiting scenarios (429 responses, quota exhaustion)
+  - Tests will cover cache behavior (hits, misses, staleness, invalidation)
+  - Tests will cover manual sheet edit synchronization scenarios
+  - Mock external APIs in unit tests; use real APIs in contract/integration tests
 
-### IV. Observability & Audit Trail ✅
-- **Status**: REQUIREMENT - All actions logged with structured JSON
-- **Implementation**: Audit log for volunteer/unvolunteer; warning generation logged; API quota usage logged; cache events logged
-- **Risk**: LOW - Straightforward logging requirement
+### Principle IV: Observability & Audit Trail ✅
+- **Status**: COMPLIANT
+  - AuditEntry entity defined in data-model.md for all state-changing operations
+  - AuditLog sheet in Google Sheets stores all audit entries
+  - Structured JSON logging for automated parsing
+  - API quota usage logged per operation type
+  - Cache hits/misses and staleness events will be logged
+  - Error logs include request context (command, user, parameters)
 
-### V. Simplicity & Minimal Dependencies ⚠️
-- **Status**: GATE - Minimize external dependencies; prefer standard library
-- **Implementation**: Will evaluate Discord library choice (discord.py vs discord.js) and Google Sheets client; avoid wrapper frameworks
-- **Risk**: MEDIUM - Need to research and justify dependency choices
+### Principle V: Simplicity & Minimal Dependencies ✅
+- **Status**: COMPLIANT
+  - Minimal dependencies: discord.py, gspread, google-auth, python-dateutil (4 core)
+  - Standard library used for: JSON caching, logging, datetime, asyncio
+  - No repository pattern or complex abstractions
+  - Direct API clients (discord.py, gspread) without wrapper frameworks
+  - Configuration via environment variables and Google Sheets
 
-### VI. Code Documentation & Maintainability ✅
-- **Status**: REQUIREMENT - Docstrings, inline comments, architecture diagram
-- **Implementation**: All functions documented; architecture diagram in text format; cross-referenced documentation
-- **Risk**: LOW - Standard practice
+### Principle VI: Code Documentation & Maintainability ✅
+- **Status**: COMPLIANT
+  - Architecture diagram will be created (text-based: Mermaid/PlantUML/ASCII)
+  - Function docstrings required for all functions/methods
+  - Inline comments for complex algorithms and non-obvious logic
+  - Public APIs (commands) documented in quickstart.md and contracts/
+  - Cross-references between documentation files
 
-### VII. Incremental Development & Version Control ✅
-- **Status**: REQUIREMENT - Small PRs, conventional commits, feature flags
-- **Implementation**: Follow SpecKit workflow; atomic commits; conventional commit format
-- **Risk**: LOW - Process requirement
+### Principle VII: Incremental Development & Version Control ✅
+- **Status**: COMPLIANT
+  - Feature branch: `001-discord-host-scheduler` (follows SpecKit naming)
+  - Work will progress through small, focused PRs
+  - Conventional commit format: `type(scope): description`
+  - Each PR will include tests, documentation updates, constitution compliance check
 
-### VIII. Code Quality Enforcement (NON-NEGOTIABLE) ✅
-- **Status**: REQUIREMENT - Pre-commit hooks, linters, formatters, all tests pass
-- **Implementation**: Language-standard linters/formatters; pre-commit hooks; local-only execution
-- **Risk**: LOW - Standard setup
+### Principle VIII: Code Quality Enforcement ✅
+- **Status**: COMPLIANT
+  - Python linter: flake8 or pylint (language-standard)
+  - Python formatter: black (language-standard)
+  - Pre-commit hooks configured to run linters and formatters automatically
+  - Pre-commit hooks block commits that fail linting/formatting
+  - All quality checks run locally (no CI/CD quota usage)
+  - All tests must pass before continuing (NON-NEGOTIABLE)
 
-### IX. Authentication & Authorization (NON-NEGOTIABLE) ✅
-- **Status**: REQUIREMENT - Role-based access control for commands
-- **Implementation**: Discord role verification; standard users vs host-privileged vs admin roles; configurable via Google Sheets/env vars
-- **Risk**: LOW - Discord provides role API
+### Principle IX: Authentication & Authorization ✅
+- **Status**: COMPLIANT
+  - Role-based access control via Discord roles (role IDs in Configuration sheet)
+  - Standard users: volunteer/unvolunteer themselves, view schedules
+  - Host-privileged users: volunteer/unvolunteer on behalf of any user
+  - Admin users: modify configuration, force sync, diagnostic commands
+  - Authorization failures logged with user ID, command, timestamp
+  - Clear error messages for unauthorized commands
 
-### X. Secrets Management (NON-NEGOTIABLE) ✅
-- **Status**: REQUIREMENT - Environment variables, .env.example, no hardcoding
-- **Implementation**: All secrets in env vars; .env.example template; service account OAuth for Google Sheets; Discord token with minimal scopes
-- **Risk**: LOW - Standard practice
+### Principle X: Secrets Management ✅
+- **Status**: COMPLIANT
+  - Discord bot token stored in environment variable
+  - Google Sheets service account credentials stored in environment variable
+  - .env.example template will be created with placeholder values
+  - Secrets never committed to version control (.env gitignored)
+  - Service account OAuth (not user OAuth) for unattended operation
+  - Bot validates required secrets at startup and fails fast with clear errors
+  - Logs sanitized to exclude secrets/API tokens
 
-### XI. Configuration Management ✅
-- **Status**: REQUIREMENT - Schema documented, startup validation
-- **Implementation**: SETUP.md with configuration schema; startup validation; Google Sheets config with headers
-- **Risk**: LOW - Documentation and validation requirement
+### Principle XI: Configuration Management ✅
+- **Status**: COMPLIANT
+  - Configuration schema defined in data-model.md (Configuration entity)
+  - Configuration stored in Google Sheets Configuration sheet
+  - Configuration validated at startup (required parameters, valid ranges/formats)
+  - Configuration schema documented in SETUP.md (to be created)
+  - Invalid configuration logged but doesn't crash bot (uses previous valid values)
 
-### XII. Deployment Standards ✅
-- **Status**: REQUIREMENT - Deployment docs with multiple methods
-- **Implementation**: SETUP.md with local dev and production deployment; Docker and direct execution options; troubleshooting guide
-- **Risk**: LOW - Documentation requirement
+### Principle XII: Deployment Standards ✅
+- **Status**: COMPLIANT (to be implemented)
+  - SETUP.md will include step-by-step deployment instructions
+  - Documentation will cover: local development, production deployment, Google Sheets setup, Discord bot registration
+  - At least two deployment methods: direct execution (systemd) and Docker
+  - Each method includes: prerequisites, installation, configuration, start/stop/restart, logs, verification
+  - TROUBLESHOOTING.md will document common deployment issues
 
-### XIII. User Experience Standards ✅
-- **Status**: REQUIREMENT - Help text, PST timezone, multiple date formats
-- **Implementation**: /help command with detailed help; PST for all dates/times; multiple date input formats; friendly error messages
-- **Risk**: LOW - UX requirements
+### Principle XIII: User Experience Standards ✅
+- **Status**: COMPLIANT
+  - All commands include help text accessible via `/help [command]`
+  - `/help` with no arguments lists all commands with brief descriptions
+  - Command responses are clear, concise, and actionable
+  - All dates and times displayed in Pacific Standard Time (PST/PDT)
+  - Date inputs accept strict format: YYYY-MM-DD only (rejects other formats with error)
+  - Error messages never show stack traces (log technical details, show friendly message)
+  - Long responses formatted for readability (tables, embeds, chunked)
+  - Bot acknowledges long-running commands within 3 seconds
 
-### Gate Evaluation (Post-Design)
+### Gate Evaluation
 
-**PASS**: All principles are requirements that will be implemented. Principle V (Simplicity) research completed - minimal dependencies chosen (discord.py, gspread, python-dateutil). No violations identified.
-
-**Post-Design Verification**:
-1. ✅ Language choice (Python 3.11+) justified in research.md
-2. ✅ Dependency choices (discord.py, gspread) justified in research.md
-3. ✅ Date parsing approach (standard library + dateutil) justified in research.md
-4. ✅ Testing framework (pytest) standard for Python
-5. ✅ Cache approach (JSON file) minimal, no additional dependencies
-6. ✅ Google Sheets API quota management addressed in contracts
-7. ✅ Resilience patterns (cache fallback) documented in data-model.md
-8. ✅ Authorization requirements documented in contracts
-9. ✅ Secrets management approach documented (env vars, service account)
-10. ✅ Configuration schema documented in data-model.md
-
-**Constitution Compliance**: ✅ PASS - All principles addressed with no violations.
+**Result**: ✅ **PASSED** - All 13 principles compliant. No violations identified. Ready to proceed with Phase 0 and Phase 1.
 
 ## Project Structure
 
@@ -132,32 +184,65 @@ specs/[###-feature]/
 
 ```text
 src/
-├── models/          # Entity definitions (Host, EventDate, RecurringPattern, Warning, AuditEntry, Config)
-├── services/        # Business logic (VolunteerService, ScheduleService, WarningService, SyncService)
-├── commands/        # Discord slash command handlers
-├── api/             # External API integrations (Discord, Google Sheets)
-├── cache/           # Caching layer for resilience
-└── utils/           # Shared utilities (date parsing, validation, logging)
+├── models/
+│   ├── host.py              # Host entity
+│   ├── event_date.py        # EventDate entity
+│   ├── recurring_pattern.py # RecurringPattern entity
+│   ├── warning.py           # Warning entity
+│   ├── audit_entry.py       # AuditEntry entity
+│   └── configuration.py     # Configuration entity
+├── services/
+│   ├── discord_service.py   # Discord bot integration (commands, events)
+│   ├── sheets_service.py    # Google Sheets API integration
+│   ├── cache_service.py     # JSON cache management
+│   ├── schedule_service.py  # Schedule business logic
+│   ├── warning_service.py   # Warning generation and posting
+│   └── sync_service.py      # Data synchronization logic
+├── commands/
+│   ├── volunteer.py         # /volunteer command handlers
+│   ├── unvolunteer.py       # /unvolunteer command handlers
+│   ├── schedule.py          # /schedule command handlers
+│   ├── warnings.py          # /warnings command handler
+│   ├── sync.py              # /sync command handler
+│   ├── reset.py             # /reset command handler
+│   └── help.py              # /help command handler
+├── utils/
+│   ├── date_parser.py       # Date parsing and validation
+│   ├── pattern_parser.py    # Recurring pattern parsing
+│   ├── auth.py              # Authorization and role checking
+│   └── logger.py             # Structured logging setup
+└── bot.py                   # Main bot entry point and initialization
 
 tests/
-├── contract/        # Contract tests for Discord and Google Sheets APIs
-├── integration/     # End-to-end integration tests
-└── unit/            # Unit tests for services, models, utilities
+├── contract/
+│   ├── test_discord_api.py  # Discord API contract tests
+│   └── test_sheets_api.py   # Google Sheets API contract tests
+├── integration/
+│   ├── test_volunteer_flow.py      # Complete volunteer workflow
+│   ├── test_recurring_patterns.py  # Recurring pattern workflows
+│   ├── test_warning_system.py      # Warning generation and posting
+│   └── test_sync_workflow.py       # Data synchronization workflows
+└── unit/
+    ├── test_date_parser.py         # Date parsing unit tests
+    ├── test_pattern_parser.py      # Pattern parsing unit tests
+    ├── test_cache_service.py       # Cache service unit tests
+    ├── test_schedule_service.py    # Schedule service unit tests
+    └── test_auth.py                # Authorization unit tests
 
-docs/
-├── ARCHITECTURE.md  # System architecture diagram and component descriptions
-├── COMMANDS.md      # User-facing command documentation
-├── SETUP.md         # Deployment and configuration documentation
-└── TROUBLESHOOTING.md # Common issues and solutions
+cache.json                         # Local JSON cache (gitignored)
+.env.example                       # Environment variable template
+requirements.txt                   # Python dependencies
+pyproject.toml                     # Project configuration (optional)
+.pre-commit-config.yaml           # Pre-commit hooks configuration
+README.md                          # Project overview and setup
+SETUP.md                           # Deployment and configuration guide
+COMMANDS.md                        # Command documentation
+TROUBLESHOOTING.md                 # Common issues and solutions
+ARCHITECTURE.md                    # Architecture diagram and component overview
 ```
 
-**Structure Decision**: Single project structure chosen (Discord bot application). Source code in `src/` with clear separation: models (entities), services (business logic), commands (Discord handlers), api (external integrations), cache (resilience layer), utils (shared utilities). Tests mirror source structure with contract/integration/unit separation. Documentation in `docs/` directory.
+**Structure Decision**: Single project structure chosen. This is a Discord bot application with no frontend or mobile components. The structure separates concerns: models (data entities), services (business logic and external API integration), commands (Discord command handlers), and utils (shared utilities). Tests are organized by type (contract, integration, unit) to match Constitution Principle III requirements.
 
 ## Complexity Tracking
 
-> **Fill ONLY if Constitution Check has violations that must be justified**
-
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+> **No violations identified** - All constitution principles are compliant. The implementation follows a simple, single-project structure with minimal dependencies and standard Python practices.
