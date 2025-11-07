@@ -105,6 +105,7 @@ class DiscordHostSchedulerBot:
         """Register Discord slash commands."""
         from src.commands import (
             register_help_command,
+            register_listdates_command,
             register_reset_command,
             register_schedule_command,
             register_sync_command,
@@ -141,6 +142,14 @@ class DiscordHostSchedulerBot:
             self.sheets_service,
             self.cache_service,
             self.sync_service,
+            config,
+        )
+
+        # Register /listdates command
+        register_listdates_command(
+            self.discord_service.tree,
+            self.sheets_service,
+            self.cache_service,
             config,
         )
 

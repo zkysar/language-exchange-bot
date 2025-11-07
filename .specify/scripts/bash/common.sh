@@ -62,9 +62,30 @@ has_git() {
     git rev-parse --show-toplevel >/dev/null 2>&1
 }
 
+normalize_branch_name() {
+    local branch="$1"
+
+    # Detect Cursor/Cline style worktree suffix: '-ABCDE' (5 char alphanumeric)
+    if [[ "$branch" =~ ^(.+)-([A-Za-z0-9]{5})$ ]]; then
+        local base_branch="${BASH_REMATCH[1]}"
+
+        # If the base branch looks like a feature branch (e.g. 001-feature-name),
+        # prefer it over the suffixed worktree branch.
+        if [[ "$base_branch" =~ ^[0-9]{3}- ]]; then
+            echo "$base_branch"
+            return
+        fi
+
+        # Otherwise fall through; caller can decide whether to use the base branch.
+    fi
+
+    echo "$branch"
+}
+
 check_feature_branch() {
     local branch="$1"
-    local has_git_repo="$2"
+    local effective_branch="$2"
+    local has_git_repo="$3"
 
     # For non-git repos, we can't enforce branch naming but still provide output
     if [[ "$has_git_repo" != "true" ]]; then
@@ -72,9 +93,16 @@ check_feature_branch() {
         return 0
     fi
 
-    if [[ ! "$branch" =~ ^[0-9]{3}- ]]; then
+    if [[ "$branch" != "$effective_branch" ]]; then
+        echo "[specify] Info: normalized branch name '$branch' -> '$effective_branch'" >&2
+    fi
+
+    if [[ ! "$effective_branch" =~ ^[0-9]{3}- ]]; then
         echo "ERROR: Not on a feature branch. Current branch: $branch" >&2
         echo "Feature branches should be named like: 001-feature-name" >&2
+        if [[ "$effective_branch" =~ ^(.+)-([A-Za-z0-9]{5})$ ]]; then
+            echo "Hint: Cursor worktree branches typically end with a 5-character suffix. Try renaming the base branch to follow the '001-feature-name' convention." >&2
+        fi
         return 1
     fi
 
@@ -127,6 +155,7 @@ find_feature_dir_by_prefix() {
 get_feature_paths() {
     local repo_root=$(get_repo_root)
     local current_branch=$(get_current_branch)
+    local effective_branch=$(normalize_branch_name "$current_branch")
     local has_git_repo="false"
 
     if has_git; then
@@ -134,11 +163,12 @@ get_feature_paths() {
     fi
 
     # Use prefix-based lookup to support multiple branches per spec
-    local feature_dir=$(find_feature_dir_by_prefix "$repo_root" "$current_branch")
+    local feature_dir=$(find_feature_dir_by_prefix "$repo_root" "$effective_branch")
 
     cat <<EOF
 REPO_ROOT='$repo_root'
 CURRENT_BRANCH='$current_branch'
+EFFECTIVE_BRANCH='$effective_branch'
 HAS_GIT='$has_git_repo'
 FEATURE_DIR='$feature_dir'
 FEATURE_SPEC='$feature_dir/spec.md'
