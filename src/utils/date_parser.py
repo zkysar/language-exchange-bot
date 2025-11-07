@@ -31,12 +31,13 @@ def parse_date(date_str: str) -> Optional[date]:
         ) from e
 
 
-def validate_future_date(target_date: date) -> None:
+def validate_future_date(target_date: date, allow_today: bool = False) -> None:
     """
     Validate that date is in the future (PST timezone).
 
     Args:
         target_date: Date to validate
+        allow_today: Whether to allow today's date (PST) in addition to future dates
 
     Raises:
         ValueError: If date is not in the future
@@ -44,19 +45,27 @@ def validate_future_date(target_date: date) -> None:
     # Get current date in PST
     now_pst = datetime.now(PST).date()
 
-    if target_date <= now_pst:
-        raise ValueError(
-            f"Date must be in the future. "
-            f"Today is {now_pst.isoformat()} (PST), you provided {target_date.isoformat()}"
-        )
+    if allow_today:
+        if target_date < now_pst:
+            raise ValueError(
+                "Date cannot be in the past. "
+                f"Today is {now_pst.isoformat()} (PST), you provided {target_date.isoformat()}"
+            )
+    else:
+        if target_date <= now_pst:
+            raise ValueError(
+                "Date must be in the future. "
+                f"Today is {now_pst.isoformat()} (PST), you provided {target_date.isoformat()}"
+            )
 
 
-def validate_date_format_and_future(date_str: str) -> date:
+def validate_date_format_and_future(date_str: str, allow_today: bool = False) -> date:
     """
     Parse and validate that date is in YYYY-MM-DD format and in the future.
 
     Args:
         date_str: Date string to parse and validate
+        allow_today: Whether to allow today's date (PST) in addition to future dates
 
     Returns:
         Parsed and validated date object
@@ -65,7 +74,7 @@ def validate_date_format_and_future(date_str: str) -> date:
         ValueError: If date format is invalid or date is not in the future
     """
     parsed_date = parse_date(date_str)
-    validate_future_date(parsed_date)
+    validate_future_date(parsed_date, allow_today=allow_today)
     return parsed_date
 
 

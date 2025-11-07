@@ -8,6 +8,7 @@ from src.utils.date_parser import (
     format_date_pst,
     get_current_date_pst,
     parse_date,
+    validate_date_format_and_future,
     validate_future_date,
 )
 
@@ -71,6 +72,18 @@ class TestValidateFutureDate:
         with pytest.raises(ValueError, match="Date must be in the future"):
             validate_future_date(past_date)
 
+    def test_validate_today_allowed_when_flag_true(self):
+        """Test validating today's date passes when allow_today is True."""
+        today = get_current_date_pst()
+        # Should not raise
+        validate_future_date(today, allow_today=True)
+
+    def test_validate_past_date_raises_even_when_allow_today(self):
+        """Test past dates still raise when allow_today is True."""
+        past_date = get_current_date_pst() - timedelta(days=1)
+        with pytest.raises(ValueError, match="Date cannot be in the past"):
+            validate_future_date(past_date, allow_today=True)
+
 
 class TestFormatDatePST:
     """Test format_date_pst."""
@@ -98,3 +111,19 @@ class TestGetCurrentDatePST:
         today = date.today()
         diff = abs((result - today).days)
         assert diff <= 1
+
+
+class TestValidateDateFormatAndFuture:
+    """Test validate_date_format_and_future."""
+
+    def test_today_allowed_with_flag(self):
+        """Today's date is allowed when allow_today is True."""
+        today = get_current_date_pst()
+        result = validate_date_format_and_future(today.isoformat(), allow_today=True)
+        assert result == today
+
+    def test_today_rejected_by_default(self):
+        """Today's date is rejected when allow_today is False (default)."""
+        today = get_current_date_pst()
+        with pytest.raises(ValueError, match="Date must be in the future"):
+            validate_date_format_and_future(today.isoformat())

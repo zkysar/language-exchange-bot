@@ -107,7 +107,7 @@ class UnvolunteerCommand:
 
         # Date validation
         try:
-            validated_date = validate_date_format_and_future(date)
+            validated_date = validate_date_format_and_future(date, allow_today=True)
         except ValueError as e:
             context = get_command_context(
                 interaction, "unvolunteer", date=date, target_user_id=target_discord_id
