@@ -54,4 +54,7 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Google Cloud credentials
 service-account-key.json
+*bot-*.json
