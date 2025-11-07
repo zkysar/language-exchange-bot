@@ -35,6 +35,7 @@ class DiscordService:
             intents = discord.Intents.default()
             intents.message_content = True
             intents.members = True
+            intents.guilds = True  # Explicitly enable guilds intent
 
         # Create bot client
         self.client = discord.Client(intents=intents)

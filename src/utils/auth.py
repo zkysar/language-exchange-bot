@@ -1,8 +1,11 @@
 """Authorization and role checking utilities."""
 
+import logging
 from typing import Optional
 
 import discord
+
+logger = logging.getLogger("discord_host_scheduler.auth")
 
 
 def has_role_by_id(member: discord.Member, role_ids: list[str]) -> bool:
@@ -11,7 +14,7 @@ def has_role_by_id(member: discord.Member, role_ids: list[str]) -> bool:
 
     Args:
         member: Discord member to check
-        role_ids: List of role IDs to check (as strings)
+        role_ids: List of role IDs to check (as strings or integers)
 
     Returns:
         True if member has any of the roles, False otherwise
@@ -19,8 +22,20 @@ def has_role_by_id(member: discord.Member, role_ids: list[str]) -> bool:
     if not role_ids:
         return False
 
+    # Check if this is actually a Member object with roles
+    if not isinstance(member, discord.Member):
+        logger.error(
+            f"User object is not a Member (type: {type(member).__name__}), cannot check roles"
+        )
+        return False
+
+    # Convert member role IDs to strings
     member_role_ids = {str(role.id) for role in member.roles}
-    return any(role_id in member_role_ids for role_id in role_ids)
+
+    # Convert configured role IDs to strings (handles both int and str from JSON)
+    configured_role_ids = {str(role_id) for role_id in role_ids}
+
+    return bool(member_role_ids & configured_role_ids)
 
 
 def check_organizer_role(member: discord.Member, organizer_role_ids: list[str]) -> bool:

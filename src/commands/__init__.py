@@ -1,17 +1,21 @@
 """Commands package for Discord Host Scheduler Bot."""
 
 from .help import register_help_command
+from .listdates import register_listdates_command
 from .reset import register_reset_command
 from .schedule import register_schedule_command
 from .sync import register_sync_command
 from .unvolunteer import register_unvolunteer_command
 from .volunteer import register_volunteer_command
+from .warnings import register_warnings_command
 
 __all__ = [
     "register_help_command",
+    "register_listdates_command",
     "register_reset_command",
     "register_schedule_command",
     "register_sync_command",
     "register_unvolunteer_command",
     "register_volunteer_command",
+    "register_warnings_command",
 ]

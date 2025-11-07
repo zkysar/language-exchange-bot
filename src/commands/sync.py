@@ -57,24 +57,57 @@ class SyncCommand:
         # Check maintenance mode
         if is_maintenance_mode():
             await interaction.response.send_message(
-                "⚠️ **Maintenance Mode Active**\n\n"(
-                    "The bot is currently in maintenance mode. "
-                    "Please wait for the operation to complete."
-                ),
+                "⚠️ **Maintenance Mode Active**\n\n"
+                "The bot is currently in maintenance mode. "
+                "Please wait for the operation to complete.",
                 ephemeral=True,
             )
             return
 
         # Authorization check
         try:
+            # Ensure we have a proper guild member with roles
+            if interaction.guild is None:
+                await interaction.response.send_message(
+                    "❌ This command can only be used in a server.",
+                    ephemeral=True,
+                )
+                return
+
+            # Fetch the full member object from the guild to ensure roles are populated
+            member = interaction.guild.get_member(interaction.user.id)
+            if member is None:
+                try:
+                    member = await interaction.guild.fetch_member(interaction.user.id)
+                except discord.NotFound:
+                    await interaction.response.send_message(
+                        "❌ Could not find your membership in this server.",
+                        ephemeral=True,
+                    )
+                    return
+                except Exception as fetch_error:
+                    self.logger.error(f"Failed to fetch member: {fetch_error}", exc_info=True)
+                    await interaction.response.send_message(
+                        f"❌ Error fetching member information: {fetch_error}",
+                        ephemeral=True,
+                    )
+                    return
+
             organizer_role_ids = self.config.get("organizer_role_ids", [])
             if not isinstance(organizer_role_ids, list):
                 organizer_role_ids = []
 
-            authorize_admin_command(interaction.user, organizer_role_ids)
+            authorize_admin_command(member, organizer_role_ids)
         except PermissionError as e:
             context = get_command_context(interaction, "sync")
             await send_error_response(interaction, str(e), self.logger, e, context)
+            return
+        except Exception as e:
+            self.logger.error(f"Unexpected error in authorization: {e}", exc_info=True)
+            await interaction.response.send_message(
+                f"❌ An unexpected error occurred: {e}",
+                ephemeral=True,
+            )
             return
 
         # Acknowledge interaction (can take up to 3 seconds)

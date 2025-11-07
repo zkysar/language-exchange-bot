@@ -39,6 +39,9 @@ class DiscordHostSchedulerBot:
         # Initialize services
         self._init_services()
 
+        # Event loop reference for signal handlers
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+
         # Set up signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -240,7 +243,12 @@ class DiscordHostSchedulerBot:
     def _signal_handler(self, signum, frame):
         """Handle shutdown signals."""
         self.logger.info(f"Received signal {signum}, shutting down gracefully")
-        asyncio.create_task(self.shutdown())
+        if self._loop and self._loop.is_running():
+            # Schedule shutdown task on the running event loop
+            self._loop.create_task(self.shutdown())
+        else:
+            self.logger.warning("Event loop not available, forcing exit")
+            sys.exit(0)
 
     async def shutdown(self) -> None:
         """Graceful shutdown."""
@@ -264,6 +272,9 @@ class DiscordHostSchedulerBot:
     async def run(self) -> None:
         """Run the bot."""
         try:
+            # Store event loop reference for signal handlers
+            self._loop = asyncio.get_running_loop()
+
             # Perform startup sync
             await self.startup_sync()
 
