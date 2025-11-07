@@ -5,6 +5,7 @@ import os
 import signal
 import sys
 from pathlib import Path
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -12,6 +13,7 @@ from src.services.cache_service import CacheService
 from src.services.discord_service import DiscordService
 from src.services.sheets_service import SheetsService
 from src.services.sync_service import SyncService
+from src.services.warning_service import WarningService
 from src.utils.logger import setup_logging
 
 
@@ -92,25 +94,32 @@ class DiscordHostSchedulerBot:
         self.discord_service = DiscordService(token=os.getenv("DISCORD_BOT_TOKEN"))
         self.logger.info("Discord service initialized")
 
+        # Warning service (depends on Discord service client)
+        # Will be initialized after Discord client is ready
+        self.warning_service: Optional[WarningService] = None
+
     def _register_commands(self) -> None:
         """Register Discord slash commands."""
         from src.commands import (
-            register_listdates_command,
             register_schedule_command,
             register_sync_command,
-
-        # Register /listdates command
-        register_listdates_command(
-            self.discord_service.tree,
-            self.sheets_service,
-            self.cache_service,
-            self.sync_service,
-            config,
-        )            register_volunteer_command,
+            register_unvolunteer_command,
+            register_volunteer_command,
+            register_warnings_command,
         )
 
         # Get configuration from cache
         config = self._get_config_dict()
+
+        # Initialize warning service (requires Discord client)
+        if self.warning_service is None:
+            self.warning_service = WarningService(
+                self.sheets_service,
+                self.cache_service,
+                self.discord_service.client,
+                config,
+            )
+            self.logger.info("Warning service initialized")
 
         # Register /volunteer command
         register_volunteer_command(
@@ -119,6 +128,16 @@ class DiscordHostSchedulerBot:
             self.cache_service,
             self.sync_service,
             config,
+        )
+
+        # Register /unvolunteer command (with warning service for immediate checks)
+        register_unvolunteer_command(
+            self.discord_service.tree,
+            self.sheets_service,
+            self.cache_service,
+            self.sync_service,
+            config,
+            warning_service=self.warning_service,
         )
 
         # Register /schedule command
@@ -132,18 +151,17 @@ class DiscordHostSchedulerBot:
 
         # Register /sync command
         register_sync_command(
-
-        # Register /listdates command
-        register_listdates_command(
             self.discord_service.tree,
             self.sheets_service,
             self.cache_service,
             self.sync_service,
             config,
-        )            self.discord_service.tree,
-            self.sheets_service,
-            self.cache_service,
-            self.sync_service,
+        )
+
+        # Register /warnings command
+        register_warnings_command(
+            self.discord_service.tree,
+            self.warning_service,
             config,
         )
 
@@ -212,6 +230,10 @@ class DiscordHostSchedulerBot:
         if self.sync_service:
             await self.sync_service.stop_periodic_sync()
 
+        # Stop daily warning check task
+        if self.discord_service:
+            await self.discord_service.stop_daily_warning_check()
+
         # Close Discord connection
         if self.discord_service:
             await self.discord_service.close()
@@ -225,12 +247,27 @@ class DiscordHostSchedulerBot:
             # Perform startup sync
             await self.startup_sync()
 
-            # Register commands
+            # Register commands (warning service will be initialized here)
             self._register_commands()
 
             # Start periodic sync task
             await self.sync_service.start_periodic_sync()
             self.logger.info("Periodic sync task started")
+
+            # Start daily warning check task
+            if self.warning_service:
+                config = self._get_config_dict()
+                daily_check_time = config.get("daily_check_time", "09:00")
+                # Remove "PST" suffix if present
+                if isinstance(daily_check_time, str):
+                    daily_check_time = (
+                        daily_check_time.replace(" PST", "").replace(" PDT", "").strip()
+                    )
+                self.discord_service.start_daily_warning_check(
+                    self.warning_service,
+                    check_time=daily_check_time,
+                )
+                self.logger.info("Daily warning check task started")
 
             # Start Discord bot
             self.logger.info("Starting Discord bot")
