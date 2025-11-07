@@ -1,7 +1,6 @@
 """Sync command handler."""
 
 import logging
-from typing import Any
 
 import discord
 from discord import app_commands
@@ -58,8 +57,10 @@ class SyncCommand:
         # Check maintenance mode
         if is_maintenance_mode():
             await interaction.response.send_message(
-                "⚠️ **Maintenance Mode Active**\n\n"
-                "The bot is currently in maintenance mode. Please wait for the operation to complete.",
+                "⚠️ **Maintenance Mode Active**\n\n"(
+                    "The bot is currently in maintenance mode. "
+                    "Please wait for the operation to complete."
+                ),
                 ephemeral=True,
             )
             return

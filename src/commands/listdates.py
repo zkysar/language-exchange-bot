@@ -92,7 +92,7 @@ class ListDatesCommand:
         # Format response as embed
         if target_user.id == interaction.user.id:
             title = "📅 Your Upcoming Hosting Dates"
-            description = f"Dates you're scheduled to host (next 12 weeks)"
+            description = "Dates you're scheduled to host (next 12 weeks)"
         else:
             title = f"📅 Upcoming Hosting Dates for {target_user.display_name}"
             description = f"Dates {target_user.display_name} is scheduled to host (next 12 weeks)"
@@ -104,9 +104,16 @@ class ListDatesCommand:
         )
 
         if not user_dates:
+            if target_user.id == interaction.user.id:
+                owner_text = "You have"
+            else:
+                owner_text = f"{target_user.display_name} has"
+
+            no_dates_message = f"{owner_text} no upcoming hosting dates in the next 12 weeks."
+
             embed.add_field(
                 name="No Dates Found",
-                value=f"{'You have' if target_user.id == interaction.user.id else f'{target_user.display_name} has'} no upcoming hosting dates in the next 12 weeks.",
+                value=no_dates_message,
                 inline=False,
             )
         else:

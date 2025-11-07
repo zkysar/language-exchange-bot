@@ -141,8 +141,10 @@ class ResetCommand:
         # Check maintenance mode
         if is_maintenance_mode():
             await interaction.response.send_message(
-                "⚠️ **Maintenance Mode Active**\n\n"
-                "The bot is currently in maintenance mode. Please wait for the reset operation to complete.",
+                "⚠️ **Maintenance Mode Active**\n\n"(
+                    "The bot is currently in maintenance mode. "
+                    "Please wait for the reset operation to complete."
+                ),
                 ephemeral=True,
             )
             return
@@ -200,7 +202,7 @@ class ResetCommand:
             name="Before You Proceed",
             value=(
                 "⚠️ **Important**:\n"
-                "1. Verify that Google Sheets contains the correct data (it's the source of truth)\n"
+                "1. Confirm Google Sheets has the correct data (source of truth)\n"
                 "2. Ensure no critical operations are in progress\n"
                 "3. The bot will be unavailable for a few moments during reset\n"
                 "4. All local cache will be lost (data will be reloaded from Google Sheets)"
@@ -303,7 +305,10 @@ class ResetCommand:
             # Success response
             success_embed = discord.Embed(
                 title="✅ Database Reset Complete",
-                description="The database has been successfully reset and reinitialized from Google Sheets.",
+                description=(
+                    "The database has been reset successfully. "
+                    "Data was reinitialized from Google Sheets."
+                ),
                 color=discord.Color.green(),
             )
 
@@ -383,9 +388,7 @@ class ResetCommand:
                 sheet.get("A1")
                 self.logger.debug(f"Sheet '{sheet_name}' verified")
             except Exception as e:
-                raise ValueError(
-                    f"Data integrity check failed: Sheet '{sheet_name}' is not accessible or missing: {e}"
-                )
+                raise ValueError(f"Data integrity check failed for sheet '{sheet_name}': {e}")
 
         # Verify configuration has required settings
         try:

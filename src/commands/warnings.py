@@ -1,14 +1,10 @@
 """Warnings command handler."""
 
 import logging
-from typing import Any
 
 import discord
 from discord import app_commands
 
-from src.services.cache_service import CacheService
-from src.services.discord_service import DiscordService
-from src.services.sheets_service import SheetsService
 from src.services.warning_service import WarningService
 from src.utils.auth import authorize_admin_command
 
@@ -127,7 +123,10 @@ class WarningsCommand:
             if not warnings_channel_id:
                 embed.add_field(
                     name="⚠️ Configuration Error",
-                    value="warnings_channel_id is not configured. Please configure it in the Configuration sheet.",
+                    value=(
+                        "warnings_channel_id is not configured. "
+                        "Configure it in the Configuration sheet."
+                    ),
                     inline=False,
                 )
 

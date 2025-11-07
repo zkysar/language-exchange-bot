@@ -8,7 +8,6 @@ from src.utils.date_parser import (
     format_date_pst,
     get_current_date_pst,
     parse_date,
-    validate_date_format_and_future,
     validate_future_date,
 )
 

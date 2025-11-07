@@ -9,7 +9,7 @@ from typing import Optional
 import discord
 from discord import app_commands
 
-from src.models import ActionType, AuditEntry, EventDate, Outcome
+from src.models import ActionType, Outcome
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService
 from src.services.sync_service import SyncService
@@ -72,8 +72,10 @@ class UnvolunteerCommand:
         # Check maintenance mode
         if is_maintenance_mode():
             await interaction.response.send_message(
-                "⚠️ **Maintenance Mode Active**\n\n"
-                "The bot is currently in maintenance mode. Please wait for the operation to complete.",
+                "⚠️ **Maintenance Mode Active**\n\n"(
+                    "The bot is currently in maintenance mode. "
+                    "Please wait for the operation to complete."
+                ),
                 ephemeral=True,
             )
             return
@@ -126,10 +128,11 @@ class UnvolunteerCommand:
         # Check if target user is assigned to date
         existing_event = self.cache.get("events", date_str)
         if not existing_event or existing_event.get("host_discord_id") != target_discord_id:
-            error_msg = (
-                f"<@{target_discord_id}> is not assigned to host on {format_date_pst(validated_date)}. "
-                f"Please verify the date and try again."
+            primary_message = (
+                f"<@{target_discord_id}> is not assigned to host on "
+                f"{format_date_pst(validated_date)}."
             )
+            error_msg = f"{primary_message} Please verify the date and try again."
             await interaction.response.send_message(f"❌ {error_msg}", ephemeral=True)
 
             self._create_audit_entry(
@@ -156,7 +159,8 @@ class UnvolunteerCommand:
             if user:
                 # Proxy action
                 message = (
-                    f"✅ Successfully removed <@{target_discord_id}> from hosting on **{formatted_date}**\n"
+                    "✅ Successfully removed "
+                    f"<@{target_discord_id}> from hosting on **{formatted_date}**.\n"
                     f"Removed by: <@{interaction.user.id}>"
                 )
             else:
@@ -254,7 +258,8 @@ class UnvolunteerCommand:
         existing_row = self.sheets.find_row(self.sheets.SHEET_SCHEDULE, 1, date_str)
 
         if existing_row:
-            # Clear host assignment columns (B-G: host_discord_id, host_username, recurring_pattern_id, assigned_at, assigned_by, notes)
+            # Clear host assignment columns (B-G: host_discord_id, host_username,
+            # recurring_pattern_id, assigned_at, assigned_by, notes)
             # Keep the date column (A) intact
             clear_data = [
                 "",  # host_discord_id
@@ -265,7 +270,9 @@ class UnvolunteerCommand:
                 "",  # notes
             ]
             self.sheets.update_range(
-                self.sheets.SHEET_SCHEDULE, f"B{existing_row}:G{existing_row}", [clear_data]
+                self.sheets.SHEET_SCHEDULE,
+                f"B{existing_row}:G{existing_row}",
+                [clear_data],
             )
         else:
             # Row doesn't exist, nothing to remove

@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-import os
 from datetime import datetime
 from datetime import time as dt_time
 from datetime import timedelta
@@ -169,8 +168,10 @@ class DiscordService:
                     # Wait until check time
                     wait_seconds = (next_check - now_pst).total_seconds()
                     if wait_seconds > 0:
+                        next_check_str = next_check.strftime("%Y-%m-%d %H:%M:%S %Z")
                         self.logger.info(
-                            f"Next warning check scheduled for {next_check.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+                            "Next warning check scheduled for %s",
+                            next_check_str,
                         )
                         await asyncio.sleep(wait_seconds)
 

@@ -44,8 +44,11 @@ class HelpCommand:
                     "date": {
                         "description": "Volunteer to host on a specific date",
                         "parameters": {
-                            "date": "Date to volunteer for (YYYY-MM-DD format, e.g., 2025-11-11)",
-                            "user": "User to volunteer on behalf of (requires host-privileged role) - optional",
+                            "date": "Date to volunteer (YYYY-MM-DD, e.g., 2025-11-11)",
+                            "user": (
+                                "User to volunteer on behalf of "
+                                "(requires host-privileged role, optional)"
+                            ),
                         },
                         "examples": [
                             "/volunteer date date:2025-11-11",
@@ -55,8 +58,14 @@ class HelpCommand:
                     "recurring": {
                         "description": "Set up a recurring hosting pattern",
                         "parameters": {
-                            "pattern": 'Pattern description (e.g., "every 2nd Tuesday", "monthly", "biweekly")',
-                            "user": "User to set up pattern for (requires host-privileged role) - optional",
+                            "pattern": (
+                                'Pattern description such as "every 2nd Tuesday", '
+                                '"monthly", or "biweekly"'
+                            ),
+                            "user": (
+                                "User to set up pattern for "
+                                "(requires host-privileged role, optional)"
+                            ),
                         },
                         "examples": [
                             '/volunteer recurring pattern:"every 2nd Tuesday"',
@@ -68,8 +77,11 @@ class HelpCommand:
             "unvolunteer": {
                 "description": "Cancel your hosting commitment for a specific date",
                 "parameters": {
-                    "date": "Date to unvolunteer from (YYYY-MM-DD format, e.g., 2025-11-11)",
-                    "user": "User to unvolunteer on behalf of (requires host-privileged role) - optional",
+                    "date": "Date to unvolunteer (YYYY-MM-DD, e.g., 2025-11-11)",
+                    "user": (
+                        "User to unvolunteer on behalf of "
+                        "(requires host-privileged role, optional)"
+                    ),
                 },
                 "examples": [
                     "/unvolunteer date:2025-11-11",
@@ -80,8 +92,8 @@ class HelpCommand:
             "schedule": {
                 "description": "View upcoming host schedule",
                 "parameters": {
-                    "date": "View specific date (YYYY-MM-DD format) - optional",
-                    "weeks": "Number of weeks to show (default: 8, max: 52) - optional",
+                    "date": "Specific date to view (YYYY-MM-DD, optional)",
+                    "weeks": "Weeks to show (default 8, max 52, optional)",
                 },
                 "examples": [
                     "/schedule",
@@ -98,20 +110,24 @@ class HelpCommand:
             "listdates": {
                 "description": "View all your upcoming hosting dates (coming soon)",
                 "parameters": {
-                    "user": "User to list dates for (requires host-privileged role) - optional",
+                    "user": "User to list dates for (requires host-privileged role, optional)",
                 },
                 "examples": ["/listdates", "/listdates user:@username"],
                 "status": "coming_soon",
             },
             "warnings": {
-                "description": "Manually trigger warning check for unassigned dates (admin only, coming soon)",
+                "description": (
+                    "Manually trigger warning check for unassigned dates (admin only, coming soon)"
+                ),
                 "parameters": {},
                 "examples": ["/warnings"],
                 "permissions": "Requires organizer role",
                 "status": "coming_soon",
             },
             "reset": {
-                "description": "Display instructions for safely resetting the database (admin only)",
+                "description": (
+                    "Display instructions for safely resetting the database " "(admin only)"
+                ),
                 "parameters": {},
                 "examples": ["/reset"],
                 "permissions": "Requires organizer role",
@@ -161,24 +177,22 @@ class HelpCommand:
 
         # User Commands section
         user_commands_text = ""
-        user_commands_text += f"**/volunteer date** - Sign up to host on a specific date\n"
-        user_commands_text += f"**/volunteer recurring** - Set up recurring hosting patterns\n"
-        user_commands_text += f"**/unvolunteer** - Cancel your hosting commitment\n"
-        user_commands_text += f"**/schedule** - View upcoming host schedule\n"
-        user_commands_text += f"**/help** - Show this help message\n"
-        user_commands_text += f"\n*Coming soon:*\n"
-        user_commands_text += f"**/listdates** - View all your upcoming hosting dates\n"
+        user_commands_text += "**/volunteer date** - Sign up to host on a specific date\n"
+        user_commands_text += "**/volunteer recurring** - Set up recurring hosting patterns\n"
+        user_commands_text += "**/unvolunteer** - Cancel your hosting commitment\n"
+        user_commands_text += "**/schedule** - View upcoming host schedule\n"
+        user_commands_text += "**/help** - Show this help message\n"
+        user_commands_text += "\n*Coming soon:*\n"
+        user_commands_text += "**/listdates** - View all your upcoming hosting dates\n"
 
         embed.add_field(name="👤 User Commands", value=user_commands_text, inline=False)
 
         # Administrative Commands section
         admin_commands_text = ""
-        admin_commands_text += (
-            f"**/sync** - Force synchronization with Google Sheets (admin only)\n"
-        )
-        admin_commands_text += f"**/reset** - Display database reset instructions (admin only)\n"
-        admin_commands_text += f"\n*Coming soon:*\n"
-        admin_commands_text += f"**/warnings** - Manually trigger warning check (admin only)\n"
+        admin_commands_text += "**/sync** - Force synchronization with Google Sheets (admin only)\n"
+        admin_commands_text += "**/reset** - Display database reset instructions (admin only)\n"
+        admin_commands_text += "\n*Coming soon:*\n"
+        admin_commands_text += "**/warnings** - Manually trigger warning check (admin only)\n"
 
         embed.add_field(name="⚙️ Administrative Commands", value=admin_commands_text, inline=False)
 
@@ -219,7 +233,7 @@ class HelpCommand:
         # Handle regular commands
         if command_lower not in self.commands:
             await interaction.response.send_message(
-                f"❌ Unknown command: `{command}`\n\n" f"Use `/help` to see all available commands.",
+                f"❌ Unknown command: `{command}`\n\nUse `/help` to see all available commands.",
                 ephemeral=True,
             )
             return

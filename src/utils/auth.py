@@ -74,8 +74,8 @@ def authorize_proxy_action(
     # Check if command user has host-privileged role
     if not check_host_privileged_role(command_user, host_privileged_role_ids):
         raise PermissionError(
-            f"You do not have permission to volunteer on behalf of other users. "
-            f"Required role: host-privileged"
+            "You do not have permission to volunteer on behalf of other users. "
+            "Required role: host-privileged"
         )
 
 
@@ -92,5 +92,5 @@ def authorize_admin_command(command_user: discord.Member, organizer_role_ids: li
     """
     if not check_organizer_role(command_user, organizer_role_ids):
         raise PermissionError(
-            f"You do not have permission to execute this command. " f"Required role: organizer"
+            "You do not have permission to execute this command. Required role: organizer"
         )

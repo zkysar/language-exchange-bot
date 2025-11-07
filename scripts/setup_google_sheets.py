@@ -239,14 +239,14 @@ class GoogleSheetsSetup:
 
         # Create sheet if it doesn't exist
         if sheet_name not in existing_sheets:
-            print(f"   ➕ Creating new sheet...")
+            print("   ➕ Creating new sheet...")
             worksheet = self.spreadsheet.add_worksheet(
                 title=sheet_name, rows=100, cols=len(config["headers"])
             )
             existing_sheets[sheet_name] = worksheet
         else:
             worksheet = existing_sheets[sheet_name]
-            print(f"   ✓ Sheet already exists")
+            print("   ✓ Sheet already exists")
 
         # Check and fix headers
         all_values = worksheet.get_all_values()
@@ -255,7 +255,7 @@ class GoogleSheetsSetup:
             print(f"   📝 Setting headers ({len(config['headers'])} columns)")
             worksheet.update(values=[config["headers"]], range_name="A1")
         else:
-            print(f"   ✓ Headers are correct")
+            print("   ✓ Headers are correct")
 
         # Add data if configured and missing
         if config["data"]:
@@ -265,11 +265,11 @@ class GoogleSheetsSetup:
             if len(all_values) <= 1:  # Only headers or empty
                 print(f"   📝 Adding {len(config['data'])} data rows")
                 worksheet.update(values=config["data"], range_name="A2")
-                print(f"   ✅ Data added successfully")
+                print("   ✅ Data added successfully")
             else:
                 print(f"   ✓ Data already exists ({len(all_values) - 1} rows)")
         else:
-            print(f"   ℹ️  No default data to add (user-populated sheet)")
+            print("   ℹ️  No default data to add (user-populated sheet)")
 
     def print_summary(self):
         """Print a summary of the final state."""

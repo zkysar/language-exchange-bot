@@ -2,12 +2,12 @@
 
 import logging
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Optional
 
 import discord
 
-from src.models import ActionType, AuditEntry, Outcome, Warning, WarningSeverity
+from src.models import ActionType, Outcome, Warning, WarningSeverity
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService
 
@@ -175,7 +175,10 @@ class WarningService:
                     )
 
             self.logger.info(
-                f"Posted {posted_count} warnings ({len(urgent_warnings)} urgent, {len(passive_warnings)} passive)"
+                "Posted %s warnings (%s urgent, %s passive)",
+                posted_count,
+                len(urgent_warnings),
+                len(passive_warnings),
             )
 
         except Exception as e:
@@ -225,8 +228,9 @@ class WarningService:
         warning_list = []
         for warning in warnings:
             date_str = warning.event_date.strftime("%Y-%m-%d")
+            plural_suffix = "" if warning.days_until_event == 1 else "s"
             warning_list.append(
-                f"**{date_str}** ({warning.days_until_event} day{'s' if warning.days_until_event != 1 else ''} away)"
+                f"**{date_str}** ({warning.days_until_event} day{plural_suffix} away)"
             )
 
         embed.add_field(
@@ -263,8 +267,9 @@ class WarningService:
         warning_list = []
         for warning in warnings:
             date_str = warning.event_date.strftime("%Y-%m-%d")
+            plural_suffix = "" if warning.days_until_event == 1 else "s"
             warning_list.append(
-                f"**{date_str}** ({warning.days_until_event} day{'s' if warning.days_until_event != 1 else ''} away)"
+                f"**{date_str}** ({warning.days_until_event} day{plural_suffix} away)"
             )
 
         embed.add_field(

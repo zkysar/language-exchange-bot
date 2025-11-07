@@ -9,7 +9,7 @@ import discord
 from discord import app_commands
 from discord.ui import Button, View
 
-from src.models import ActionType, AuditEntry, EventDate, Outcome, RecurringPattern
+from src.models import ActionType, Outcome
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService
 from src.services.sync_service import SyncService
@@ -179,8 +179,10 @@ class VolunteerCommand:
         # Check maintenance mode
         if is_maintenance_mode():
             await interaction.response.send_message(
-                "⚠️ **Maintenance Mode Active**\n\n"
-                "The bot is currently in maintenance mode. Please wait for the operation to complete.",
+                "⚠️ **Maintenance Mode Active**\n\n"(
+                    "The bot is currently in maintenance mode. "
+                    "Please wait for the operation to complete."
+                ),
                 ephemeral=True,
             )
             return
@@ -238,10 +240,11 @@ class VolunteerCommand:
 
             error_msg = (
                 f"Date {format_date_pst(validated_date)} is already assigned to "
-                f"<@{existing_host_id}> ({existing_host_username}). "
-                f"Please choose a different date."
+                f"<@{existing_host_id}> ({existing_host_username})."
             )
-            await interaction.response.send_message(f"❌ {error_msg}", ephemeral=True)
+            await interaction.response.send_message(
+                f"❌ {error_msg} Please choose a different date.", ephemeral=True
+            )
 
             self._create_audit_entry(
                 action_type=ActionType.VOLUNTEER,
@@ -267,7 +270,8 @@ class VolunteerCommand:
             if user:
                 # Proxy action
                 message = (
-                    f"✅ Successfully assigned <@{target_discord_id}> to host on **{formatted_date}**\n"
+                    "✅ Successfully assigned "
+                    f"<@{target_discord_id}> to host on **{formatted_date}**.\n"
                     f"Assigned by: <@{interaction.user.id}>"
                 )
             else:
@@ -351,8 +355,10 @@ class VolunteerCommand:
         # Check maintenance mode
         if is_maintenance_mode():
             await interaction.response.send_message(
-                "⚠️ **Maintenance Mode Active**\n\n"
-                "The bot is currently in maintenance mode. Please wait for the operation to complete.",
+                "⚠️ **Maintenance Mode Active**\n\n"(
+                    "The bot is currently in maintenance mode. "
+                    "Please wait for the operation to complete."
+                ),
                 ephemeral=True,
             )
             return
@@ -458,11 +464,13 @@ class VolunteerCommand:
             if len(conflicts) > 5:
                 conflict_list += f"\n... and {len(conflicts) - 5} more"
 
-            await interaction.response.send_message(
-                f"❌ All dates generated from this pattern are already assigned:\n{conflict_list}\n\n"
-                f"Please choose a different pattern or contact an organizer.",
-                ephemeral=True,
+            conflict_message = (
+                "❌ All dates generated from this pattern are already assigned:\n"
+                f"{conflict_list}\n\n"
+                "Please choose a different pattern or contact an organizer."
             )
+
+            await interaction.response.send_message(conflict_message, ephemeral=True)
             self._create_audit_entry(
                 action_type=ActionType.VOLUNTEER_RECURRING,
                 user_discord_id=str(interaction.user.id),
@@ -505,8 +513,10 @@ class VolunteerCommand:
             )
 
         embed.set_footer(
-            text=f"Only {len(valid_dates)} date(s) will be assigned. "
-            f"{len(conflicts)} conflicted date(s) will be skipped."
+            text=(
+                f"Only {len(valid_dates)} date(s) will be assigned. "
+                f"{len(conflicts)} conflicted date(s) will be skipped."
+            )
         )
 
         # Create confirmation view
@@ -620,7 +630,10 @@ class VolunteerCommand:
             success_msg += date_list
 
             if conflicts:
-                success_msg += f"\n\n⚠️ Skipped {len(conflicts)} conflicted date(s) that were already assigned."
+                success_msg += (
+                    f"\n\n⚠️ Skipped {len(conflicts)} conflicted date(s) "
+                    "that were already assigned."
+                )
 
             await interaction.followup.send(success_msg, ephemeral=True)
 
