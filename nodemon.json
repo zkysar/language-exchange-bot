@@ -1,0 +1,8 @@
+{
+  "watch": ["src"],
+  "ext": "py,json",
+  "ignore": ["**/__pycache__/**", "**/*.pyc"],
+  "delay": 10000,
+  "exec": "python3 -m src.bot",
+  "verbose": true
+}
