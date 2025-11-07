@@ -70,31 +70,31 @@ Setup → Foundational → US1/US2 (parallel)
 
 ### Project Structure
 
-- [ ] T001 Create project root directory structure (src/, tests/, specs/)
-- [ ] T002 Create src/models/ directory for entity models
-- [ ] T003 Create src/services/ directory for business logic services
-- [ ] T004 Create src/commands/ directory for Discord command handlers
-- [ ] T005 Create src/utils/ directory for shared utilities
-- [ ] T006 Create tests/contract/ directory for API contract tests
-- [ ] T007 Create tests/integration/ directory for integration tests
-- [ ] T008 Create tests/unit/ directory for unit tests
+- [x] T001 Create project root directory structure (src/, tests/, specs/)
+- [x] T002 Create src/models/ directory for entity models
+- [x] T003 Create src/services/ directory for business logic services
+- [x] T004 Create src/commands/ directory for Discord command handlers
+- [x] T005 Create src/utils/ directory for shared utilities
+- [x] T006 Create tests/contract/ directory for API contract tests
+- [x] T007 Create tests/integration/ directory for integration tests
+- [x] T008 Create tests/unit/ directory for unit tests
 
 ### Dependencies & Configuration
 
-- [ ] T009 Create requirements.txt with core dependencies (discord.py>=2.3.0, gspread>=5.12.0, google-auth>=2.23.0, python-dateutil>=2.8.0)
-- [ ] T010 Create requirements.txt with development dependencies (pytest>=7.4.0, pytest-asyncio>=0.21.0, pytest-mock>=3.12.0)
-- [ ] T011 Create pyproject.toml with project metadata and optional configuration
-- [ ] T012 Create .env.example template with placeholder values (DISCORD_BOT_TOKEN, GOOGLE_SHEETS_SPREADSHEET_ID, GOOGLE_SHEETS_CREDENTIALS_FILE)
-- [ ] T013 Create .gitignore file excluding .env, cache.json, __pycache__/, *.pyc, .pytest_cache/
-- [ ] T014 Create .pre-commit-config.yaml with black, flake8 hooks for code quality enforcement
+- [x] T009 Create requirements.txt with core dependencies (discord.py>=2.3.0, gspread>=5.12.0, google-auth>=2.23.0, python-dateutil>=2.8.0)
+- [x] T010 Create requirements.txt with development dependencies (pytest>=7.4.0, pytest-asyncio>=0.21.0, pytest-mock>=3.12.0)
+- [x] T011 Create pyproject.toml with project metadata and optional configuration
+- [x] T012 Create .env.example template with placeholder values (DISCORD_BOT_TOKEN, GOOGLE_SHEETS_SPREADSHEET_ID, GOOGLE_SHEETS_CREDENTIALS_FILE)
+- [x] T013 Create .gitignore file excluding .env, cache.json, __pycache__/, *.pyc, .pytest_cache/
+- [x] T014 Create .pre-commit-config.yaml with black, flake8 hooks for code quality enforcement
 
 ### Documentation Setup
 
-- [ ] T015 Create README.md with project overview, setup instructions, and links to documentation
-- [ ] T016 Create SETUP.md template for deployment instructions (to be filled in Phase 11)
-- [ ] T017 Create COMMANDS.md template for command reference (to be filled in Phase 11)
-- [ ] T018 Create TROUBLESHOOTING.md template for common issues (to be filled in Phase 11)
-- [ ] T019 Create ARCHITECTURE.md template for system design (to be filled in Phase 11)
+- [x] T015 Create README.md with project overview, setup instructions, and links to documentation
+- [x] T016 Create SETUP.md template for deployment instructions (to be filled in Phase 11)
+- [x] T017 Create COMMANDS.md template for command reference (to be filled in Phase 11)
+- [x] T018 Create TROUBLESHOOTING.md template for common issues (to be filled in Phase 11)
+- [x] T019 Create ARCHITECTURE.md template for system design (to be filled in Phase 11)
 
 ---
 
@@ -106,30 +106,30 @@ Setup → Foundational → US1/US2 (parallel)
 
 ### Models (Data Entities)
 
-- [ ] T020 [P] Create Host model in src/models/host.py with discord_id, discord_username, created_at fields
-- [ ] T021 [P] Create EventDate model in src/models/event_date.py with date, host_discord_id, recurring_pattern_id, assigned_at, assigned_by, notes fields
-- [ ] T022 [P] Create RecurringPattern model in src/models/recurring_pattern.py with pattern_id, host_discord_id, pattern_description, pattern_rule, start_date, end_date, created_at, is_active fields
-- [ ] T023 [P] Create Warning model in src/models/warning.py with warning_id, event_date, severity, days_until_event, posted_at, posted_channel_id, resolved_at fields
-- [ ] T024 [P] Create AuditEntry model in src/models/audit_entry.py with entry_id, timestamp, action_type, user_discord_id, target_user_discord_id, event_date, recurring_pattern_id, outcome, error_message, metadata fields
-- [ ] T025 [P] Create Configuration model in src/models/configuration.py with setting_key, setting_value, setting_type, description, updated_at fields and default configuration values
+- [x] T020 [P] Create Host model in src/models/host.py with discord_id, discord_username, created_at fields
+- [x] T021 [P] Create EventDate model in src/models/event_date.py with date, host_discord_id, recurring_pattern_id, assigned_at, assigned_by, notes fields
+- [x] T022 [P] Create RecurringPattern model in src/models/recurring_pattern.py with pattern_id, host_discord_id, pattern_description, pattern_rule, start_date, end_date, created_at, is_active fields
+- [x] T023 [P] Create Warning model in src/models/warning.py with warning_id, event_date, severity, days_until_event, posted_at, posted_channel_id, resolved_at fields
+- [x] T024 [P] Create AuditEntry model in src/models/audit_entry.py with entry_id, timestamp, action_type, user_discord_id, target_user_discord_id, event_date, recurring_pattern_id, outcome, error_message, metadata fields
+- [x] T025 [P] Create Configuration model in src/models/configuration.py with setting_key, setting_value, setting_type, description, updated_at fields and default configuration values
 
 ### Core Services
 
-- [ ] T026 Create SheetsService in src/services/sheets_service.py with Google Sheets API integration, authentication, and basic read/write operations
-- [ ] T027 Create CacheService in src/services/cache_service.py with JSON file-based caching, TTL management, and cache invalidation logic
-- [ ] T028 Create DiscordService foundation in src/services/discord_service.py with bot initialization, connection handling, and basic event handlers
-- [ ] T029 Create SyncService in src/services/sync_service.py with data synchronization logic between Google Sheets and cache, conflict resolution
+- [x] T026 Create SheetsService in src/services/sheets_service.py with Google Sheets API integration, authentication, and basic read/write operations
+- [x] T027 Create CacheService in src/services/cache_service.py with JSON file-based caching, TTL management, and cache invalidation logic
+- [x] T028 Create DiscordService foundation in src/services/discord_service.py with bot initialization, connection handling, and basic event handlers
+- [x] T029 Create SyncService in src/services/sync_service.py with data synchronization logic between Google Sheets and cache, conflict resolution
 
 ### Utilities
 
-- [ ] T030 [P] Create date_parser utility in src/utils/date_parser.py with YYYY-MM-DD format validation, future date validation, and PST timezone handling
-- [ ] T031 [P] Create pattern_parser utility in src/utils/pattern_parser.py with recurring pattern parsing (every Nth weekday, monthly, biweekly) and dateutil.relativedelta conversion
-- [ ] T032 [P] Create auth utility in src/utils/auth.py with Discord role-based authorization checking, organizer role validation, and host-privileged role validation
-- [ ] T033 [P] Create logger utility in src/utils/logger.py with structured JSON logging setup, console and file output configuration
+- [x] T030 [P] Create date_parser utility in src/utils/date_parser.py with YYYY-MM-DD format validation, future date validation, and PST timezone handling
+- [x] T031 [P] Create pattern_parser utility in src/utils/pattern_parser.py with recurring pattern parsing (every Nth weekday, monthly, biweekly) and dateutil.relativedelta conversion
+- [x] T032 [P] Create auth utility in src/utils/auth.py with Discord role-based authorization checking, organizer role validation, and host-privileged role validation
+- [x] T033 [P] Create logger utility in src/utils/logger.py with structured JSON logging setup, console and file output configuration
 
 ### Bot Entry Point
 
-- [ ] T034 Create bot.py in src/bot.py with main entry point, bot initialization, service initialization, and graceful shutdown handling
+- [x] T034 Create bot.py in src/bot.py with main entry point, bot initialization, service initialization, and graceful shutdown handling
 
 ---
 
@@ -149,16 +149,16 @@ Setup → Foundational → US1/US2 (parallel)
 
 ### Implementation Tasks
 
-- [ ] T035 [US1] Create volunteer command handler in src/commands/volunteer.py with single date volunteering logic
-- [ ] T036 [US1] Implement date validation in volunteer command (YYYY-MM-DD format, future date check) using src/utils/date_parser.py
-- [ ] T037 [US1] Implement conflict detection in volunteer command (check existing assignments in Schedule sheet)
-- [ ] T038 [US1] Implement first-wins conflict resolution in volunteer command (immediate error if date already assigned)
-- [ ] T039 [US1] Implement Google Sheets update in volunteer command (update Schedule sheet via SheetsService)
-- [ ] T040 [US1] Implement audit logging in volunteer command (create AuditEntry via SheetsService)
-- [ ] T041 [US1] Implement cache invalidation in volunteer command (invalidate cache after successful update)
-- [ ] T042 [US1] Implement Discord response formatting in volunteer command (confirmation message with PST timezone display)
-- [ ] T043 [US1] Register /volunteer slash command in src/services/discord_service.py with user and date parameters
-- [ ] T044 [US1] Implement error handling in volunteer command (invalid date format, past date, already assigned, API failures)
+- [x] T035 [US1] Create volunteer command handler in src/commands/volunteer.py with single date volunteering logic
+- [x] T036 [US1] Implement date validation in volunteer command (YYYY-MM-DD format, future date check) using src/utils/date_parser.py
+- [x] T037 [US1] Implement conflict detection in volunteer command (check existing assignments in Schedule sheet)
+- [x] T038 [US1] Implement first-wins conflict resolution in volunteer command (immediate error if date already assigned)
+- [x] T039 [US1] Implement Google Sheets update in volunteer command (update Schedule sheet via SheetsService)
+- [x] T040 [US1] Implement audit logging in volunteer command (create AuditEntry via SheetsService)
+- [x] T041 [US1] Implement cache invalidation in volunteer command (invalidate cache after successful update)
+- [x] T042 [US1] Implement Discord response formatting in volunteer command (confirmation message with PST timezone display)
+- [x] T043 [US1] Register /volunteer slash command in src/services/discord_service.py with user and date parameters
+- [x] T044 [US1] Implement error handling in volunteer command (invalid date format, past date, already assigned, API failures)
 
 ---
 
@@ -178,16 +178,16 @@ Setup → Foundational → US1/US2 (parallel)
 
 ### Implementation Tasks
 
-- [ ] T045 [US2] Create schedule command handler in src/commands/schedule.py with schedule viewing logic
-- [ ] T046 [US2] Implement schedule query in schedule command (query Schedule sheet for date range via SheetsService or cache)
-- [ ] T047 [US2] Implement schedule formatting in schedule command (format as Discord embed with dates and hosts)
-- [ ] T048 [US2] Implement unassigned date marking in schedule command (clearly mark dates without assigned hosts)
-- [ ] T049 [US2] Implement PST timezone conversion in schedule command (display all dates in PST)
-- [ ] T050 [US2] Implement cache usage in schedule command (use cache if available and not expired)
-- [ ] T051 [US2] Implement optional date parameter in schedule command (show specific date if provided)
-- [ ] T052 [US2] Implement optional weeks parameter in schedule command (show N weeks, default from configuration)
-- [ ] T053 [US2] Register /schedule slash command in src/services/discord_service.py with optional date and weeks parameters
-- [ ] T054 [US2] Implement error handling in schedule command (API failures, invalid date format, cache staleness warnings)
+- [x] T045 [US2] Create schedule command handler in src/commands/schedule.py with schedule viewing logic
+- [x] T046 [US2] Implement schedule query in schedule command (query Schedule sheet for date range via SheetsService or cache)
+- [x] T047 [US2] Implement schedule formatting in schedule command (format as Discord embed with dates and hosts)
+- [x] T048 [US2] Implement unassigned date marking in schedule command (clearly mark dates without assigned hosts)
+- [x] T049 [US2] Implement PST timezone conversion in schedule command (display all dates in PST)
+- [x] T050 [US2] Implement cache usage in schedule command (use cache if available and not expired)
+- [x] T051 [US2] Implement optional date parameter in schedule command (show specific date if provided)
+- [x] T052 [US2] Implement optional weeks parameter in schedule command (show N weeks, default from configuration)
+- [x] T053 [US2] Register /schedule slash command in src/services/discord_service.py with optional date and weeks parameters
+- [x] T054 [US2] Implement error handling in schedule command (API failures, invalid date format, cache staleness warnings)
 
 ---
 
@@ -207,15 +207,15 @@ Setup → Foundational → US1/US2 (parallel)
 
 ### Implementation Tasks
 
-- [ ] T055 [US3] Create unvolunteer command handler in src/commands/unvolunteer.py with single date cancellation logic
-- [ ] T056 [US3] Implement assignment validation in unvolunteer command (verify host is assigned to date)
-- [ ] T057 [US3] Implement Google Sheets update in unvolunteer command (clear host assignment in Schedule sheet)
-- [ ] T058 [US3] Implement audit logging in unvolunteer command (create AuditEntry via SheetsService)
-- [ ] T059 [US3] Implement cache invalidation in unvolunteer command (invalidate cache after successful update)
-- [ ] T060 [US3] Implement immediate warning check trigger in unvolunteer command (call WarningService.check_warnings after removal)
-- [ ] T061 [US3] Implement Discord response formatting in unvolunteer command (confirmation message)
-- [ ] T062 [US3] Register /unvolunteer slash command in src/services/discord_service.py with user and date parameters
-- [ ] T063 [US3] Implement error handling in unvolunteer command (not assigned, invalid date, API failures)
+- [x] T055 [US3] Create unvolunteer command handler in src/commands/unvolunteer.py with single date cancellation logic
+- [x] T056 [US3] Implement assignment validation in unvolunteer command (verify host is assigned to date)
+- [x] T057 [US3] Implement Google Sheets update in unvolunteer command (clear host assignment in Schedule sheet)
+- [x] T058 [US3] Implement audit logging in unvolunteer command (create AuditEntry via SheetsService)
+- [x] T059 [US3] Implement cache invalidation in unvolunteer command (invalidate cache after successful update)
+- [x] T060 [US3] Implement immediate warning check trigger in unvolunteer command (call WarningService.check_warnings after removal)
+- [x] T061 [US3] Implement Discord response formatting in unvolunteer command (confirmation message)
+- [x] T062 [US3] Register /unvolunteer slash command in src/services/discord_service.py with user and date parameters
+- [x] T063 [US3] Implement error handling in unvolunteer command (not assigned, invalid date, API failures)
 
 ---
 
@@ -235,17 +235,17 @@ Setup → Foundational → US1/US2 (parallel)
 
 ### Implementation Tasks
 
-- [ ] T064 [US4] Implement recurring pattern volunteering in src/commands/volunteer.py (add recurring subcommand)
-- [ ] T065 [US4] Implement pattern parsing in volunteer recurring command (use pattern_parser utility for pattern description)
-- [ ] T066 [US4] Implement date generation in volunteer recurring command (generate next 3 months of dates using pattern_parser and dateutil.relativedelta)
-- [ ] T067 [US4] Implement conflict detection in volunteer recurring command (check each generated date against existing assignments)
-- [ ] T068 [US4] Implement preview display in volunteer recurring command (show dates and conflicts in Discord embed)
-- [ ] T069 [US4] Implement confirmation flow in volunteer recurring command (ask for yes/no confirmation before committing)
-- [ ] T070 [US4] Implement batch assignment in volunteer recurring command (assign all non-conflicting dates via SheetsService batch update)
-- [ ] T071 [US4] Implement RecurringPattern creation in volunteer recurring command (create pattern entry in RecurringPatterns sheet)
-- [ ] T072 [US4] Implement audit logging in volunteer recurring command (create AuditEntry for recurring pattern creation)
-- [ ] T073 [US4] Register /volunteer recurring slash command in src/services/discord_service.py with user and pattern parameters
-- [ ] T074 [US4] Implement error handling in volunteer recurring command (invalid pattern, no valid dates, all dates conflicted, API failures)
+- [x] T064 [US4] Implement recurring pattern volunteering in src/commands/volunteer.py (add recurring subcommand)
+- [x] T065 [US4] Implement pattern parsing in volunteer recurring command (use pattern_parser utility for pattern description)
+- [x] T066 [US4] Implement date generation in volunteer recurring command (generate next 3 months of dates using pattern_parser and dateutil.relativedelta)
+- [x] T067 [US4] Implement conflict detection in volunteer recurring command (check each generated date against existing assignments)
+- [x] T068 [US4] Implement preview display in volunteer recurring command (show dates and conflicts in Discord embed)
+- [x] T069 [US4] Implement confirmation flow in volunteer recurring command (ask for yes/no confirmation before committing)
+- [x] T070 [US4] Implement batch assignment in volunteer recurring command (assign all non-conflicting dates via SheetsService batch update)
+- [x] T071 [US4] Implement RecurringPattern creation in volunteer recurring command (create pattern entry in RecurringPatterns sheet)
+- [x] T072 [US4] Implement audit logging in volunteer recurring command (create AuditEntry for recurring pattern creation)
+- [x] T073 [US4] Register /volunteer recurring slash command in src/services/discord_service.py with user and pattern parameters
+- [x] T074 [US4] Implement error handling in volunteer recurring command (invalid pattern, no valid dates, all dates conflicted, API failures)
 
 ---
 
@@ -289,15 +289,15 @@ Setup → Foundational → US1/US2 (parallel)
 
 ### Implementation Tasks
 
-- [ ] T081 [US5] Create WarningService in src/services/warning_service.py with warning generation, severity calculation, and posting logic
-- [ ] T082 [US5] Implement warning check in WarningService (query unassigned dates, calculate days until event, determine severity)
-- [ ] T083 [US5] Implement warning posting in WarningService (post to Discord channel, ping organizer role for urgent warnings)
-- [ ] T084 [US5] Implement daily scheduled task in src/services/discord_service.py (use discord.py tasks for daily warning check at configured time)
-- [ ] T085 [US5] Create warnings command handler in src/commands/warnings.py with manual warning check trigger
-- [ ] T086 [US5] Implement immediate warning check in unvolunteer command (call WarningService.check_warnings after successful removal)
-- [ ] T087 [US5] Register /warnings slash command in src/services/discord_service.py (admin-only, no parameters)
-- [ ] T088 [US5] Implement authorization check in warnings command (require organizer role)
-- [ ] T089 [US5] Implement error handling in warnings command (API failures, missing channel configuration)
+- [x] T081 [US5] Create WarningService in src/services/warning_service.py with warning generation, severity calculation, and posting logic
+- [x] T082 [US5] Implement warning check in WarningService (query unassigned dates, calculate days until event, determine severity)
+- [x] T083 [US5] Implement warning posting in WarningService (post to Discord channel, ping organizer role for urgent warnings)
+- [x] T084 [US5] Implement daily scheduled task in src/services/discord_service.py (use discord.py tasks for daily warning check at configured time)
+- [x] T085 [US5] Create warnings command handler in src/commands/warnings.py with manual warning check trigger
+- [x] T086 [US5] Implement immediate warning check in unvolunteer command (call WarningService.check_warnings after successful removal)
+- [x] T087 [US5] Register /warnings slash command in src/services/discord_service.py (admin-only, no parameters)
+- [x] T088 [US5] Implement authorization check in warnings command (require organizer role)
+- [x] T089 [US5] Implement error handling in warnings command (API failures, missing channel configuration)
 
 ---
 
@@ -317,16 +317,16 @@ Setup → Foundational → US1/US2 (parallel)
 
 ### Implementation Tasks
 
-- [ ] T090 [US6] Implement startup sync in src/bot.py (load Configuration, Schedule, RecurringPatterns from Google Sheets on startup)
-- [ ] T091 [US6] Implement periodic sync task in SyncService (sync every cache_ttl_seconds, update cache with changes)
-- [ ] T092 [US6] Implement change detection in SyncService (compare Google Sheets data with cache, identify changes)
-- [ ] T093 [US6] Implement conflict resolution in SyncService (Google Sheets is authoritative, cache conflicts resolved by Sheets data)
-- [ ] T094 [US6] Implement sync command handler in src/commands/sync.py with force sync logic
-- [ ] T095 [US6] Register /sync slash command in src/services/discord_service.py (admin-only, no parameters)
-- [ ] T096 [US6] Implement authorization check in sync command (require organizer role)
-- [ ] T097 [US6] Implement sync status reporting in sync command (report number of records synced, conflicts resolved)
-- [ ] T098 [US6] Implement error handling in sync command (API failures, quota exceeded, cache staleness warnings)
-- [ ] T099 [US6] Implement cache staleness warning in all read operations (show warning when using stale cache due to API failure)
+- [x] T090 [US6] Implement startup sync in src/bot.py (load Configuration, Schedule, RecurringPatterns from Google Sheets on startup)
+- [x] T091 [US6] Implement periodic sync task in SyncService (sync every cache_ttl_seconds, update cache with changes)
+- [x] T092 [US6] Implement change detection in SyncService (compare Google Sheets data with cache, identify changes)
+- [x] T093 [US6] Implement conflict resolution in SyncService (Google Sheets is authoritative, cache conflicts resolved by Sheets data)
+- [x] T094 [US6] Implement sync command handler in src/commands/sync.py with force sync logic
+- [x] T095 [US6] Register /sync slash command in src/services/discord_service.py (admin-only, no parameters)
+- [x] T096 [US6] Implement authorization check in sync command (require organizer role)
+- [x] T097 [US6] Implement sync status reporting in sync command (report number of records synced, conflicts resolved)
+- [x] T098 [US6] Implement error handling in sync command (API failures, quota exceeded, cache staleness warnings)
+- [x] T099 [US6] Implement cache staleness warning in all read operations (show warning when using stale cache due to API failure)
 
 ---
 
