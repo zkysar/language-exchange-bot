@@ -346,17 +346,17 @@ Setup → Foundational → US1/US2 (parallel)
 
 ### Implementation Tasks
 
-- [ ] T100 [US8] Create reset command handler in src/commands/reset.py with reset instructions and execution logic
-- [ ] T101 [US8] Implement reset instructions display in reset command (show step-by-step procedure, what reset does)
-- [ ] T102 [US8] Implement reset confirmation flow in reset command (require explicit confirmation before executing)
-- [ ] T103 [US8] Implement cache clearing in reset command (delete cache.json file)
-- [ ] T104 [US8] Implement reinitialization in reset command (reload all data from Google Sheets via SheetsService)
-- [ ] T105 [US8] Implement data integrity verification in reset command (verify all required sheets exist, data is valid)
-- [ ] T106 [US8] Implement maintenance mode in reset command (prevent user interactions during reset operation)
-- [ ] T107 [US8] Implement audit logging in reset command (create AuditEntry for reset action)
-- [ ] T108 [US8] Register /reset slash command in src/services/discord_service.py (admin-only, no parameters)
-- [ ] T109 [US8] Implement authorization check in reset command (require organizer role)
-- [ ] T110 [US8] Implement error handling in reset command (reset failures, data integrity issues, recovery procedures)
+- [x] T100 [US8] Create reset command handler in src/commands/reset.py with reset instructions and execution logic
+- [x] T101 [US8] Implement reset instructions display in reset command (show step-by-step procedure, what reset does)
+- [x] T102 [US8] Implement reset confirmation flow in reset command (require explicit confirmation before executing)
+- [x] T103 [US8] Implement cache clearing in reset command (delete cache.json file)
+- [x] T104 [US8] Implement reinitialization in reset command (reload all data from Google Sheets via SheetsService)
+- [x] T105 [US8] Implement data integrity verification in reset command (verify all required sheets exist, data is valid)
+- [x] T106 [US8] Implement maintenance mode in reset command (prevent user interactions during reset operation)
+- [x] T107 [US8] Implement audit logging in reset command (create AuditEntry for reset action)
+- [x] T108 [US8] Register /reset slash command in src/services/discord_service.py (admin-only, no parameters)
+- [x] T109 [US8] Implement authorization check in reset command (require organizer role)
+- [x] T110 [US8] Implement error handling in reset command (reset failures, data integrity issues, recovery procedures)
 
 ---
 
@@ -375,27 +375,27 @@ Setup → Foundational → US1/US2 (parallel)
 
 ### Help Command
 
-- [ ] T115 Create help command handler in src/commands/help.py with command listing and detailed help for specific commands
-- [ ] T116 Implement command listing in help command (show all commands with brief descriptions when no command specified)
-- [ ] T117 Implement detailed help in help command (show detailed help for specific command when command parameter provided)
-- [ ] T118 Register /help slash command in src/services/discord_service.py with optional command parameter
+- [x] T115 Create help command handler in src/commands/help.py with command listing and detailed help for specific commands
+- [x] T116 Implement command listing in help command (show all commands with brief descriptions when no command specified)
+- [x] T117 Implement detailed help in help command (show detailed help for specific command when command parameter provided)
+- [x] T118 Register /help slash command in src/services/discord_service.py with optional command parameter
 
 ### Recurring Pattern Cancellation
 
-- [ ] T119 Implement recurring pattern cancellation in src/commands/unvolunteer.py (add recurring subcommand)
-- [ ] T120 Implement pattern lookup in unvolunteer recurring command (find active patterns for user)
-- [ ] T121 Implement affected dates display in unvolunteer recurring command (show all dates that would be affected)
-- [ ] T122 Implement confirmation flow in unvolunteer recurring command (ask for confirmation before deactivating pattern)
-- [ ] T123 Implement pattern deactivation in unvolunteer recurring command (set is_active to FALSE in RecurringPatterns sheet)
-- [ ] T124 Register /unvolunteer recurring slash command in src/services/discord_service.py with optional user parameter
+- [x] T119 Implement recurring pattern cancellation in src/commands/unvolunteer.py (add recurring subcommand)
+- [x] T120 Implement pattern lookup in unvolunteer recurring command (find active patterns for user)
+- [x] T121 Implement affected dates display in unvolunteer recurring command (show all dates that would be affected)
+- [x] T122 Implement confirmation flow in unvolunteer recurring command (ask for confirmation before deactivating pattern)
+- [x] T123 Implement pattern deactivation in unvolunteer recurring command (set is_active to FALSE in RecurringPatterns sheet)
+- [x] T124 Register /unvolunteer recurring slash command in src/services/discord_service.py with optional user parameter
 
 ### List Dates Command
 
-- [ ] T125 Create listdates command handler in src/commands/listdates.py with user date listing logic
-- [ ] T126 Implement date lookup in listdates command (query Schedule sheet for all dates assigned to user, next 12 weeks)
-- [ ] T127 Implement recurring pattern indicator in listdates command (show which dates are from recurring patterns)
-- [ ] T128 Implement date formatting in listdates command (format as Discord embed with dates and pattern indicators)
-- [ ] T129 Register /listdates slash command in src/services/discord_service.py with optional user parameter
+- [x] T125 Create listdates command handler in src/commands/listdates.py with user date listing logic
+- [x] T126 Implement date lookup in listdates command (query Schedule sheet for all dates assigned to user, next 12 weeks)
+- [x] T127 Implement recurring pattern indicator in listdates command (show which dates are from recurring patterns)
+- [x] T128 Implement date formatting in listdates command (format as Discord embed with dates and pattern indicators)
+- [x] T129 Register /listdates slash command in src/services/discord_service.py with optional user parameter
 
 ### Error Handling & Logging
 

@@ -15,11 +15,21 @@ from src.services.sheets_service import SheetsService
 from src.services.sync_service import SyncService
 from src.utils.auth import authorize_proxy_action
 from src.utils.date_parser import format_date_pst, validate_date_format_and_future
+from src.utils.error_handler import get_command_context, handle_api_error, send_error_response
+from src.utils.logger import log_with_context
 from src.utils.pattern_parser import (
     generate_dates_from_pattern,
     parse_pattern_description,
     pattern_rule_to_json,
 )
+
+# Import maintenance mode check
+try:
+    from src.commands.reset import is_maintenance_mode
+except ImportError:
+    # Fallback if reset module not available
+    def is_maintenance_mode() -> bool:
+        return False
 
 
 class ConfirmationView(View):
@@ -84,9 +94,23 @@ class ConfirmationView(View):
                 assigned_by_id=assigned_by_id,
             )
         except Exception as e:
-            await interaction.followup.send(
-                f"❌ Failed to assign recurring pattern: {str(e)}", ephemeral=True
-            )
+            from gspread.exceptions import APIError
+
+            if isinstance(e, APIError):
+                await handle_api_error(
+                    interaction, e, self.handler.logger, "recurring pattern assignment"
+                )
+            else:
+                context = get_command_context(
+                    interaction, "volunteer_recurring", pattern=self.pattern_description
+                )
+                await send_error_response(
+                    interaction,
+                    "Failed to assign recurring pattern. Please try again.",
+                    self.handler.logger,
+                    e,
+                    context,
+                )
 
         # Disable buttons
         for item in self.children:
@@ -152,6 +176,15 @@ class VolunteerCommand:
             date: Date to volunteer for (YYYY-MM-DD format)
             user: Optional user to volunteer on behalf of (requires host-privileged role)
         """
+        # Check maintenance mode
+        if is_maintenance_mode():
+            await interaction.response.send_message(
+                "⚠️ **Maintenance Mode Active**\n\n"
+                "The bot is currently in maintenance mode. Please wait for the operation to complete.",
+                ephemeral=True,
+            )
+            return
+
         # Determine target user (proxy action or self)
         target_user = user if user else interaction.user
         target_discord_id = str(target_user.id)
@@ -163,7 +196,10 @@ class VolunteerCommand:
                 interaction.user, target_discord_id if user else None, host_privileged_role_ids
             )
         except PermissionError as e:
-            await interaction.response.send_message(f"❌ {str(e)}", ephemeral=True)
+            context = get_command_context(
+                interaction, "volunteer", date=date, target_user_id=target_discord_id
+            )
+            await send_error_response(interaction, str(e), self.logger, e, context)
             self._create_audit_entry(
                 action_type=ActionType.VOLUNTEER,
                 user_discord_id=str(interaction.user.id),
@@ -178,7 +214,10 @@ class VolunteerCommand:
         try:
             validated_date = validate_date_format_and_future(date)
         except ValueError as e:
-            await interaction.response.send_message(f"❌ {str(e)}", ephemeral=True)
+            context = get_command_context(
+                interaction, "volunteer", date=date, target_user_id=target_discord_id
+            )
+            await send_error_response(interaction, str(e), self.logger, e, context)
             self._create_audit_entry(
                 action_type=ActionType.VOLUNTEER,
                 user_discord_id=str(interaction.user.id),
@@ -247,13 +286,44 @@ class VolunteerCommand:
                 error_message=None,
             )
 
-            self.logger.info(
-                f"User {interaction.user.id} assigned {target_discord_id} to {date_str}"
+            # Structured logging for state-changing operation
+            log_with_context(
+                self.logger,
+                "info",
+                "Volunteer assignment successful",
+                get_command_context(
+                    interaction,
+                    "volunteer",
+                    date=date_str,
+                    target_user_id=target_discord_id,
+                    outcome="success",
+                ),
             )
 
         except Exception as e:
-            error_msg = f"Failed to assign host: {str(e)}"
-            await interaction.response.send_message(f"❌ {error_msg}", ephemeral=True)
+            from gspread.exceptions import APIError
+
+            if isinstance(e, APIError):
+                await handle_api_error(
+                    interaction,
+                    e,
+                    self.logger,
+                    "volunteer assignment",
+                    get_command_context(
+                        interaction, "volunteer", date=date_str, target_user_id=target_discord_id
+                    ),
+                )
+            else:
+                context = get_command_context(
+                    interaction, "volunteer", date=date_str, target_user_id=target_discord_id
+                )
+                await send_error_response(
+                    interaction,
+                    "Failed to assign host. Please try again.",
+                    self.logger,
+                    e,
+                    context,
+                )
 
             self._create_audit_entry(
                 action_type=ActionType.VOLUNTEER,
@@ -263,8 +333,6 @@ class VolunteerCommand:
                 outcome=Outcome.FAILURE,
                 error_message=str(e),
             )
-
-            self.logger.error(f"Failed to assign host: {e}", exc_info=True)
 
     async def handle_recurring(
         self,
@@ -280,6 +348,15 @@ class VolunteerCommand:
             pattern: Pattern description (e.g., "every 2nd Tuesday")
             user: Optional user to volunteer on behalf of (requires host-privileged role)
         """
+        # Check maintenance mode
+        if is_maintenance_mode():
+            await interaction.response.send_message(
+                "⚠️ **Maintenance Mode Active**\n\n"
+                "The bot is currently in maintenance mode. Please wait for the operation to complete.",
+                ephemeral=True,
+            )
+            return
+
         # Determine target user (proxy action or self)
         target_user = user if user else interaction.user
         target_discord_id = str(target_user.id)

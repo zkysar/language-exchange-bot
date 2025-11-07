@@ -101,6 +101,8 @@ class DiscordHostSchedulerBot:
     def _register_commands(self) -> None:
         """Register Discord slash commands."""
         from src.commands import (
+            register_help_command,
+            register_reset_command,
             register_schedule_command,
             register_sync_command,
             register_unvolunteer_command,
@@ -120,6 +122,15 @@ class DiscordHostSchedulerBot:
                 config,
             )
             self.logger.info("Warning service initialized")
+
+        # Register /help command
+        register_help_command(
+            self.discord_service.tree,
+            self.sheets_service,
+            self.cache_service,
+            self.sync_service,
+            config,
+        )
 
         # Register /volunteer command
         register_volunteer_command(
@@ -162,6 +173,15 @@ class DiscordHostSchedulerBot:
         register_warnings_command(
             self.discord_service.tree,
             self.warning_service,
+            config,
+        )
+
+        # Register /reset command
+        register_reset_command(
+            self.discord_service.tree,
+            self.sheets_service,
+            self.cache_service,
+            self.sync_service,
             config,
         )
 

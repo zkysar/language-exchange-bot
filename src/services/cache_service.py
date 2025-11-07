@@ -103,14 +103,24 @@ class CacheService:
             Cached value, or None if not found
         """
         if not self._cache_data:
+            self.logger.debug(f"Cache miss: {category}/{key} (no cache data)")
             return None
 
         category_data = self._cache_data.get(category, {})
 
         if key is None:
+            if category_data:
+                self.logger.debug(f"Cache hit: {category} (entire category)")
+            else:
+                self.logger.debug(f"Cache miss: {category} (category not found)")
             return category_data
 
-        return category_data.get(key)
+        value = category_data.get(key)
+        if value is not None:
+            self.logger.debug(f"Cache hit: {category}/{key}")
+        else:
+            self.logger.debug(f"Cache miss: {category}/{key}")
+        return value
 
     def set(self, category: str, key: str, value: Any) -> None:
         """
@@ -128,6 +138,7 @@ class CacheService:
             self._cache_data[category] = {}
 
         self._cache_data[category][key] = value
+        self.logger.debug(f"Cache set: {category}/{key}")
         self._save_cache()
 
     def set_many(self, category: str, data: dict) -> None:
@@ -142,6 +153,7 @@ class CacheService:
             self._cache_data = self._get_empty_cache()
 
         self._cache_data[category] = data
+        self.logger.debug(f"Cache set_many: {category} ({len(data)} items)")
         self._save_cache()
 
     def delete(self, category: str, key: str = None) -> None:
@@ -172,6 +184,7 @@ class CacheService:
             self._cache_data["last_sync"] = None
             self._save_cache()
         self.logger.info("Cache invalidated")
+        self.logger.debug("Cache invalidation: all cache operations will miss until next sync")
 
     def update_sync_timestamp(self) -> None:
         """Update last_sync timestamp to current time."""

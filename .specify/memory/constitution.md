@@ -1,21 +1,24 @@
 <!--
 Sync Impact Report - Constitution Update
 =========================================
-Version Change: 1.3.0 → 1.4.0
-Rationale: MINOR version bump - Added TypeScript language requirement to Principle VIII
+Version Change: 1.4.0 → 1.5.0
+Rationale: MINOR version bump - Added new Principle XIV (Specification Synchronization)
 
-Modified Principles:
-  - VIII. Code Quality Enforcement - Added requirement that all TypeScript/JavaScript code must be written in TypeScript
+Added Principles:
+  - XIV. Specification Synchronization (NON-NEGOTIABLE) - Requirement that all product
+    changes be reflected in spec.md
 
 Modified Sections:
-  - Principle VIII - Added TypeScript language requirement
-  - Development Workflow > Quality Gates - Added TypeScript verification check
-  - Development Workflow > Code Review Process - Added TypeScript verification item
+  - Development Workflow > Quality Gates - Added spec synchronization verification check
+  - Development Workflow > Code Review Process - Added spec synchronization review item
 
 Templates Requiring Updates:
-  ✅ .specify/templates/plan-template.md - Constitution Check section compatible (no changes needed)
-  ✅ .specify/templates/spec-template.md - No changes needed
-  ✅ .specify/templates/tasks-template.md - No changes needed
+  ✅ .specify/templates/plan-template.md - No changes needed (constitution check already
+     references current version)
+  ✅ .specify/templates/spec-template.md - No changes needed (template structure supports
+     amendments and updates)
+  ✅ .specify/templates/tasks-template.md - No changes needed (tasks already reference
+     spec.md as input)
 
 Follow-up TODOs: None - all placeholders filled
 =========================================
@@ -315,6 +318,36 @@ distributed communities. Multiple date formats reduce friction. User-friendly er
 messages reduce support burden and improve adoption. Fast acknowledgment prevents users
 from thinking commands failed.
 
+### XIV. Specification Synchronization (NON-NEGOTIABLE)
+
+All product changes and implementation work MUST be reflected in the feature specification:
+
+- Feature specification (spec.md) MUST be treated as the authoritative source of truth
+  for what the product does
+- Any implementation that adds, modifies, or removes functionality MUST update spec.md
+  before the work is considered complete
+- Specification updates MUST include:
+  - New or modified user stories with acceptance scenarios
+  - Updated functional requirements (FR-XXX entries)
+  - Changed success criteria if behavior differs from original spec
+  - New edge cases discovered during implementation
+  - Updated technical details section for new commands, APIs, or data structures
+- Spec updates MUST be part of the same commit/PR as the implementation (not deferred)
+- Specification MUST reflect the current state of the product (not just the original plan)
+- When behavior diverges from spec during implementation due to technical constraints or
+  discoveries, spec MUST be updated to document the actual behavior AND the rationale
+  for the change
+- Code reviews MUST verify that spec.md accurately reflects the implemented changes
+- Task completion MUST NOT be marked as done if spec.md does not reflect the changes
+
+**Rationale**: Feature specifications serve as living documentation of product behavior
+and requirements. When specs become outdated, they lose value for future development,
+onboarding, debugging, and planning. Keeping spec.md synchronized with implementation
+ensures the project maintains a single source of truth for "what the product does."
+This prevents confusion, enables better planning for future features, and provides
+accurate documentation for maintainers and stakeholders. Requiring synchronization as
+part of the definition of "done" prevents spec drift and documentation debt.
+
 ## Performance & Reliability Standards
 
 ### Response Time Targets
@@ -362,6 +395,7 @@ Before merging any feature:
    - Verify configuration schema documented and validated at startup (Principle XI)
    - Verify deployment documentation updated if deployment process changed (Principle XII)
    - Verify command help text exists and dates use PST timezone (Principle XIII)
+   - Verify spec.md updated to reflect all implemented changes (Principle XIV)
 
 2. **Testing Requirements**:
    - Contract tests MUST pass for all external API interactions
@@ -392,6 +426,7 @@ Before merging any feature:
    - Inline code documentation MUST explain "why" for non-obvious logic
    - All documentation files MUST include cross-references to related documents
    - Documentation MUST have clear navigation structure (table of contents, backlinks)
+   - Feature specification (spec.md) MUST be updated to reflect all implemented changes
 
 ### Code Review Process
 
@@ -412,10 +447,11 @@ All pull requests MUST:
 - Update .env.example if new secrets added
 - Include authorization checks for new commands
 - Include help text for new commands with PST timezone handling
+- Update spec.md to reflect all implemented functionality changes
 
 Reviewers MUST verify:
 
-- Constitution compliance (all 13 principles addressed)
+- Constitution compliance (all 14 principles addressed)
 - No security vulnerabilities (credential leaks, command injection, XSS in embeds,
   authorization bypasses)
 - Error messages are user-friendly and actionable
@@ -429,6 +465,7 @@ Reviewers MUST verify:
 - Secrets properly managed (environment variables, not hard-coded)
 - Configuration validated at startup
 - Command help text exists and dates displayed in PST
+- Feature specification (spec.md) accurately reflects implemented changes
 
 ## Governance
 
@@ -469,4 +506,4 @@ All features MUST reference the constitution version they comply with in their p
 "Constitution Check" section. This enables tracking which features need review when
 constitution is amended with breaking changes.
 
-**Version**: 1.4.0 | **Ratified**: 2025-11-04 | **Last Amended**: 2025-11-04
+**Version**: 1.5.0 | **Ratified**: 2025-11-04 | **Last Amended**: 2025-11-06

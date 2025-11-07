@@ -2,7 +2,10 @@
 
 import asyncio
 import logging
-from datetime import datetime, time as dt_time, timedelta
+import os
+from datetime import datetime
+from datetime import time as dt_time
+from datetime import timedelta
 from typing import Any, Optional
 
 import discord
@@ -166,9 +169,8 @@ class DiscordService:
                     # Wait until check time
                     wait_seconds = (next_check - now_pst).total_seconds()
                     if wait_seconds > 0:
-                        next_check_str = next_check.strftime("%Y-%m-%d %H:%M:%S %Z")
                         self.logger.info(
-                            f"Next warning check scheduled for {next_check_str}"
+                            f"Next warning check scheduled for {next_check.strftime('%Y-%m-%d %H:%M:%S %Z')}"
                         )
                         await asyncio.sleep(wait_seconds)
 
@@ -197,9 +199,7 @@ class DiscordService:
                     await asyncio.sleep(300)  # 5 minutes
 
         self._daily_warning_task = asyncio.create_task(_daily_warning_loop())
-        self.logger.info(
-            f"Started daily warning check task (check time: {check_time} PST)"
-        )
+        self.logger.info(f"Started daily warning check task (check time: {check_time} PST)")
 
     async def stop_daily_warning_check(self) -> None:
         """Stop daily warning check task."""
