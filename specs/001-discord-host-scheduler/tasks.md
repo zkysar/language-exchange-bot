@@ -289,15 +289,15 @@ Setup → Foundational → US1/US2 (parallel)
 
 ### Implementation Tasks
 
-- [ ] T081 [US5] Create WarningService in src/services/warning_service.py with warning generation, severity calculation, and posting logic
-- [ ] T082 [US5] Implement warning check in WarningService (query unassigned dates, calculate days until event, determine severity)
-- [ ] T083 [US5] Implement warning posting in WarningService (post to Discord channel, ping organizer role for urgent warnings)
-- [ ] T084 [US5] Implement daily scheduled task in src/services/discord_service.py (use discord.py tasks for daily warning check at configured time)
-- [ ] T085 [US5] Create warnings command handler in src/commands/warnings.py with manual warning check trigger
-- [ ] T086 [US5] Implement immediate warning check in unvolunteer command (call WarningService.check_warnings after successful removal)
-- [ ] T087 [US5] Register /warnings slash command in src/services/discord_service.py (admin-only, no parameters)
-- [ ] T088 [US5] Implement authorization check in warnings command (require organizer role)
-- [ ] T089 [US5] Implement error handling in warnings command (API failures, missing channel configuration)
+- [x] T081 [US5] Create WarningService in src/services/warning_service.py with warning generation, severity calculation, and posting logic
+- [x] T082 [US5] Implement warning check in WarningService (query unassigned dates, calculate days until event, determine severity)
+- [x] T083 [US5] Implement warning posting in WarningService (post to Discord channel, ping organizer role for urgent warnings)
+- [x] T084 [US5] Implement daily scheduled task in src/services/discord_service.py (use discord.py tasks for daily warning check at configured time)
+- [x] T085 [US5] Create warnings command handler in src/commands/warnings.py with manual warning check trigger
+- [x] T086 [US5] Implement immediate warning check in unvolunteer command (call WarningService.check_warnings after successful removal)
+- [x] T087 [US5] Register /warnings slash command in src/services/discord_service.py (admin-only, no parameters)
+- [x] T088 [US5] Implement authorization check in warnings command (require organizer role)
+- [x] T089 [US5] Implement error handling in warnings command (API failures, missing channel configuration)
 
 ---
 

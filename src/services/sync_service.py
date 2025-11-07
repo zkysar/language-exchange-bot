@@ -2,8 +2,10 @@
 
 import asyncio
 import logging
+from datetime import datetime
 from typing import Any, Callable, Optional
 
+from src.models import Configuration, EventDate, RecurringPattern
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService
 

@@ -1,7 +1,9 @@
 """Google Sheets service for data persistence."""
 
 import logging
+import os
 import time
+from datetime import datetime
 from typing import Any, Optional
 
 import gspread
@@ -80,7 +82,7 @@ class SheetsService:
             try:
                 self._spreadsheet = self._client.open_by_key(self.spreadsheet_id)
                 self.logger.info(f"Opened spreadsheet: {self._spreadsheet.title}")
-            except SpreadsheetNotFound:
+            except SpreadsheetNotFound as e:
                 self.logger.error(f"Spreadsheet not found: {self.spreadsheet_id}")
                 raise
 

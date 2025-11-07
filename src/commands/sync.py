@@ -1,6 +1,7 @@
 """Sync command handler."""
 
 import logging
+from typing import Any
 
 import discord
 from discord import app_commands
@@ -10,8 +11,6 @@ from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService
 from src.services.sync_service import SyncService
 from src.utils.auth import authorize_admin_command
-from src.utils.error_handler import get_command_context, handle_api_error, send_error_response
-from src.utils.logger import log_with_context
 
 
 class SyncCommand:
@@ -54,8 +53,10 @@ class SyncCommand:
 
             authorize_admin_command(interaction.user, organizer_role_ids)
         except PermissionError as e:
-            context = get_command_context(interaction, "sync")
-            await send_error_response(interaction, str(e), self.logger, e, context)
+            await interaction.response.send_message(f"❌ {str(e)}", ephemeral=True)
+            self.logger.warning(
+                f"User {interaction.user.id} attempted to use /sync without authorization"
+            )
             return
 
         # Acknowledge interaction (can take up to 3 seconds)
@@ -126,37 +127,74 @@ class SyncCommand:
             )
 
             await interaction.followup.send(embed=embed, ephemeral=True)
-
-            # Structured logging for state-changing operation
-            log_with_context(
-                self.logger,
-                "info",
-                "Sync completed successfully",
-                get_command_context(
-                    interaction,
-                    "sync",
-                    events_synced=stats.get("events_synced", 0),
-                    patterns_synced=stats.get("patterns_synced", 0),
-                    config_synced=stats.get("config_synced", 0),
-                    conflicts_resolved=len(conflicts),
-                    outcome="success",
-                ),
-            )
+            self.logger.info(f"Sync completed for user {interaction.user.id}: {stats}")
 
         except APIError as e:
-            # Handle Google Sheets API errors using consistent error handler
-            context = get_command_context(interaction, "sync")
-            await handle_api_error(interaction, e, self.logger, "sync operation", context)
+            # Handle Google Sheets API errors
+            error_code = e.response.status_code if hasattr(e, "response") else "unknown"
+
+            if error_code == 429:
+                error_msg = (
+                    "❌ Google Sheets API rate limit exceeded. " "Please try again in a few minutes."
+                )
+                self.logger.warning(f"Rate limit exceeded during sync: {e}")
+            elif error_code == 403:
+                error_msg = (
+                    "❌ Google Sheets API access denied. "
+                    "Please check service account permissions."
+                )
+                self.logger.error(f"Access denied during sync: {e}")
+            else:
+                error_msg = f"❌ Google Sheets API error: {str(e)}"
+                self.logger.error(f"API error during sync: {e}")
+
+            embed = discord.Embed(
+                title="❌ Sync Failed",
+                description=error_msg,
+                color=discord.Color.red(),
+            )
+
+            # Show cache staleness warning
+            if self.cache.is_stale():
+                cache_age = self.cache.get_age_seconds()
+                if cache_age:
+                    cache_minutes = int(cache_age / 60)
+                    embed.add_field(
+                        name="⚠️ Warning",
+                        value=(
+                            f"Cache is stale ({cache_minutes} minutes old). "
+                            f"Data may be out of date."
+                        ),
+                        inline=False,
+                    )
+
+            await interaction.followup.send(embed=embed, ephemeral=True)
 
         except Exception as e:
-            context = get_command_context(interaction, "sync")
-            await send_error_response(
-                interaction,
-                "Sync failed. Please try again.",
-                self.logger,
-                e,
-                context,
+            error_msg = f"❌ Sync failed: {str(e)}"
+            self.logger.error(f"Unexpected error during sync: {e}", exc_info=True)
+
+            embed = discord.Embed(
+                title="❌ Sync Failed",
+                description=error_msg,
+                color=discord.Color.red(),
             )
+
+            # Show cache staleness warning
+            if self.cache.is_stale():
+                cache_age = self.cache.get_age_seconds()
+                if cache_age:
+                    cache_minutes = int(cache_age / 60)
+                    embed.add_field(
+                        name="⚠️ Warning",
+                        value=(
+                            f"Cache is stale ({cache_minutes} minutes old). "
+                            f"Data may be out of date."
+                        ),
+                        inline=False,
+                    )
+
+            await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 def register_sync_command(

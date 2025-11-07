@@ -9,14 +9,12 @@ import discord
 from discord import app_commands
 from discord.ui import Button, View
 
-from src.models import ActionType, Outcome
+from src.models import ActionType, AuditEntry, EventDate, Outcome, RecurringPattern
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService
 from src.services.sync_service import SyncService
 from src.utils.auth import authorize_proxy_action
 from src.utils.date_parser import format_date_pst, validate_date_format_and_future
-from src.utils.error_handler import get_command_context, handle_api_error, send_error_response
-from src.utils.logger import log_with_context
 from src.utils.pattern_parser import (
     generate_dates_from_pattern,
     parse_pattern_description,
@@ -86,23 +84,9 @@ class ConfirmationView(View):
                 assigned_by_id=assigned_by_id,
             )
         except Exception as e:
-            from gspread.exceptions import APIError
-
-            if isinstance(e, APIError):
-                await handle_api_error(
-                    interaction, e, self.handler.logger, "recurring pattern assignment"
-                )
-            else:
-                context = get_command_context(
-                    interaction, "volunteer_recurring", pattern=self.pattern_description
-                )
-                await send_error_response(
-                    interaction,
-                    "Failed to assign recurring pattern. Please try again.",
-                    self.handler.logger,
-                    e,
-                    context,
-                )
+            await interaction.followup.send(
+                f"❌ Failed to assign recurring pattern: {str(e)}", ephemeral=True
+            )
 
         # Disable buttons
         for item in self.children:
@@ -179,10 +163,7 @@ class VolunteerCommand:
                 interaction.user, target_discord_id if user else None, host_privileged_role_ids
             )
         except PermissionError as e:
-            context = get_command_context(
-                interaction, "volunteer", date=date, target_user_id=target_discord_id
-            )
-            await send_error_response(interaction, str(e), self.logger, e, context)
+            await interaction.response.send_message(f"❌ {str(e)}", ephemeral=True)
             self._create_audit_entry(
                 action_type=ActionType.VOLUNTEER,
                 user_discord_id=str(interaction.user.id),
@@ -197,10 +178,7 @@ class VolunteerCommand:
         try:
             validated_date = validate_date_format_and_future(date)
         except ValueError as e:
-            context = get_command_context(
-                interaction, "volunteer", date=date, target_user_id=target_discord_id
-            )
-            await send_error_response(interaction, str(e), self.logger, e, context)
+            await interaction.response.send_message(f"❌ {str(e)}", ephemeral=True)
             self._create_audit_entry(
                 action_type=ActionType.VOLUNTEER,
                 user_discord_id=str(interaction.user.id),
@@ -250,8 +228,7 @@ class VolunteerCommand:
             if user:
                 # Proxy action
                 message = (
-                    f"✅ Successfully assigned <@{target_discord_id}> "
-                    f"to host on **{formatted_date}**\n"
+                    f"✅ Successfully assigned <@{target_discord_id}> to host on **{formatted_date}**\n"
                     f"Assigned by: <@{interaction.user.id}>"
                 )
             else:
@@ -270,44 +247,13 @@ class VolunteerCommand:
                 error_message=None,
             )
 
-            # Structured logging for state-changing operation
-            log_with_context(
-                self.logger,
-                "info",
-                "Volunteer assignment successful",
-                get_command_context(
-                    interaction,
-                    "volunteer",
-                    date=date_str,
-                    target_user_id=target_discord_id,
-                    outcome="success",
-                ),
+            self.logger.info(
+                f"User {interaction.user.id} assigned {target_discord_id} to {date_str}"
             )
 
         except Exception as e:
-            from gspread.exceptions import APIError
-
-            if isinstance(e, APIError):
-                await handle_api_error(
-                    interaction,
-                    e,
-                    self.logger,
-                    "volunteer assignment",
-                    get_command_context(
-                        interaction, "volunteer", date=date_str, target_user_id=target_discord_id
-                    ),
-                )
-            else:
-                context = get_command_context(
-                    interaction, "volunteer", date=date_str, target_user_id=target_discord_id
-                )
-                await send_error_response(
-                    interaction,
-                    "Failed to assign host. Please try again.",
-                    self.logger,
-                    e,
-                    context,
-                )
+            error_msg = f"Failed to assign host: {str(e)}"
+            await interaction.response.send_message(f"❌ {error_msg}", ephemeral=True)
 
             self._create_audit_entry(
                 action_type=ActionType.VOLUNTEER,
@@ -317,6 +263,8 @@ class VolunteerCommand:
                 outcome=Outcome.FAILURE,
                 error_message=str(e),
             )
+
+            self.logger.error(f"Failed to assign host: {e}", exc_info=True)
 
     async def handle_recurring(
         self,
@@ -434,8 +382,7 @@ class VolunteerCommand:
                 conflict_list += f"\n... and {len(conflicts) - 5} more"
 
             await interaction.response.send_message(
-                f"❌ All dates generated from this pattern are already assigned:\n"
-                f"{conflict_list}\n\n"
+                f"❌ All dates generated from this pattern are already assigned:\n{conflict_list}\n\n"
                 f"Please choose a different pattern or contact an organizer.",
                 ephemeral=True,
             )
@@ -596,9 +543,7 @@ class VolunteerCommand:
             success_msg += date_list
 
             if conflicts:
-                skipped_msg = f"\n\n⚠️ Skipped {len(conflicts)} conflicted date(s) "
-                skipped_msg += "that were already assigned."
-                success_msg += skipped_msg
+                success_msg += f"\n\n⚠️ Skipped {len(conflicts)} conflicted date(s) that were already assigned."
 
             await interaction.followup.send(success_msg, ephemeral=True)
 

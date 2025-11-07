@@ -9,14 +9,12 @@ from typing import Optional
 import discord
 from discord import app_commands
 
-from src.models import ActionType, Outcome
+from src.models import ActionType, AuditEntry, EventDate, Outcome
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService
 from src.services.sync_service import SyncService
 from src.utils.auth import authorize_proxy_action
 from src.utils.date_parser import format_date_pst, validate_date_format_and_future
-from src.utils.error_handler import get_command_context, handle_api_error, send_error_response
-from src.utils.logger import log_with_context
 
 
 class UnvolunteerCommand:
@@ -28,6 +26,7 @@ class UnvolunteerCommand:
         cache_service: CacheService,
         sync_service: SyncService,
         config: dict,
+        warning_service=None,
     ):
         """
         Initialize unvolunteer command handler.
@@ -37,11 +36,13 @@ class UnvolunteerCommand:
             cache_service: Cache service instance
             sync_service: Sync service instance
             config: Configuration dictionary from cache
+            warning_service: Optional WarningService instance for immediate warning check
         """
         self.sheets = sheets_service
         self.cache = cache_service
         self.sync = sync_service
         self.config = config
+        self.warning_service = warning_service
         self.logger = logging.getLogger("discord_host_scheduler.commands.unvolunteer")
 
     async def handle(
@@ -69,10 +70,7 @@ class UnvolunteerCommand:
                 interaction.user, target_discord_id if user else None, host_privileged_role_ids
             )
         except PermissionError as e:
-            context = get_command_context(
-                interaction, "unvolunteer", date=date, target_user_id=target_discord_id
-            )
-            await send_error_response(interaction, str(e), self.logger, e, context)
+            await interaction.response.send_message(f"❌ {str(e)}", ephemeral=True)
             self._create_audit_entry(
                 action_type=ActionType.UNVOLUNTEER,
                 user_discord_id=str(interaction.user.id),
@@ -87,10 +85,7 @@ class UnvolunteerCommand:
         try:
             validated_date = validate_date_format_and_future(date)
         except ValueError as e:
-            context = get_command_context(
-                interaction, "unvolunteer", date=date, target_user_id=target_discord_id
-            )
-            await send_error_response(interaction, str(e), self.logger, e, context)
+            await interaction.response.send_message(f"❌ {str(e)}", ephemeral=True)
             self._create_audit_entry(
                 action_type=ActionType.UNVOLUNTEER,
                 user_discord_id=str(interaction.user.id),
@@ -106,9 +101,8 @@ class UnvolunteerCommand:
         # Check if target user is assigned to date
         existing_event = self.cache.get("events", date_str)
         if not existing_event or existing_event.get("host_discord_id") != target_discord_id:
-            formatted_date_str = format_date_pst(validated_date)
             error_msg = (
-                f"<@{target_discord_id}> is not assigned to host on {formatted_date_str}. "
+                f"<@{target_discord_id}> is not assigned to host on {format_date_pst(validated_date)}. "
                 f"Please verify the date and try again."
             )
             await interaction.response.send_message(f"❌ {error_msg}", ephemeral=True)
@@ -137,8 +131,7 @@ class UnvolunteerCommand:
             if user:
                 # Proxy action
                 message = (
-                    f"✅ Successfully removed <@{target_discord_id}> "
-                    f"from hosting on **{formatted_date}**\n"
+                    f"✅ Successfully removed <@{target_discord_id}> from hosting on **{formatted_date}**\n"
                     f"Removed by: <@{interaction.user.id}>"
                 )
             else:
@@ -159,44 +152,22 @@ class UnvolunteerCommand:
                 error_message=None,
             )
 
-            # Structured logging for state-changing operation
-            log_with_context(
-                self.logger,
-                "info",
-                "Unvolunteer removal successful",
-                get_command_context(
-                    interaction,
-                    "unvolunteer",
-                    date=date_str,
-                    target_user_id=target_discord_id,
-                    outcome="success",
-                ),
+            self.logger.info(
+                f"User {interaction.user.id} removed {target_discord_id} from {date_str}"
             )
 
-        except Exception as e:
-            from gspread.exceptions import APIError
+            # Trigger immediate warning check after successful removal
+            if self.warning_service:
+                try:
+                    await self.warning_service.check_and_post_warnings()
+                    self.logger.debug("Warning check triggered after unvolunteer")
+                except Exception as e:
+                    # Log error but don't fail the unvolunteer command
+                    self.logger.warning(f"Warning check failed after unvolunteer: {e}")
 
-            if isinstance(e, APIError):
-                await handle_api_error(
-                    interaction,
-                    e,
-                    self.logger,
-                    "unvolunteer removal",
-                    get_command_context(
-                        interaction, "unvolunteer", date=date_str, target_user_id=target_discord_id
-                    ),
-                )
-            else:
-                context = get_command_context(
-                    interaction, "unvolunteer", date=date_str, target_user_id=target_discord_id
-                )
-                await send_error_response(
-                    interaction,
-                    "Failed to remove host assignment. Please try again.",
-                    self.logger,
-                    e,
-                    context,
-                )
+        except Exception as e:
+            error_msg = f"Failed to remove host assignment: {str(e)}"
+            await interaction.response.send_message(f"❌ {error_msg}", ephemeral=True)
 
             self._create_audit_entry(
                 action_type=ActionType.UNVOLUNTEER,
@@ -206,6 +177,8 @@ class UnvolunteerCommand:
                 outcome=Outcome.FAILURE,
                 error_message=str(e),
             )
+
+            self.logger.error(f"Failed to remove host assignment: {e}", exc_info=True)
 
     async def _remove_host_from_date(
         self,
@@ -227,9 +200,7 @@ class UnvolunteerCommand:
         existing_row = self.sheets.find_row(self.sheets.SHEET_SCHEDULE, 1, date_str)
 
         if existing_row:
-            # Clear host assignment columns (B-G):
-            # host_discord_id, host_username, recurring_pattern_id,
-            # assigned_at, assigned_by, notes
+            # Clear host assignment columns (B-G: host_discord_id, host_username, recurring_pattern_id, assigned_at, assigned_by, notes)
             # Keep the date column (A) intact
             clear_data = [
                 "",  # host_discord_id
@@ -322,6 +293,7 @@ def register_unvolunteer_command(
     cache_service: CacheService,
     sync_service: SyncService,
     config: dict,
+    warning_service=None,
 ) -> None:
     """
     Register /unvolunteer command with Discord bot.
@@ -332,8 +304,11 @@ def register_unvolunteer_command(
         cache_service: Cache service instance
         sync_service: Sync service instance
         config: Configuration dictionary
+        warning_service: Optional WarningService instance for immediate warning check
     """
-    handler = UnvolunteerCommand(sheets_service, cache_service, sync_service, config)
+    handler = UnvolunteerCommand(
+        sheets_service, cache_service, sync_service, config, warning_service
+    )
 
     @tree.command(
         name="unvolunteer", description="Cancel your hosting commitment for a specific date"

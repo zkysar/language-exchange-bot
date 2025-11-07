@@ -1,9 +1,12 @@
 """Discord bot service foundation."""
 
+import asyncio
 import logging
-from typing import Optional
+from datetime import datetime, time as dt_time, timedelta
+from typing import Any, Optional
 
 import discord
+import pytz
 from discord import app_commands
 
 
@@ -34,6 +37,11 @@ class DiscordService:
         # Create bot client
         self.client = discord.Client(intents=intents)
         self.tree = app_commands.CommandTree(self.client)
+
+        # Daily warning check task
+        self._daily_warning_task: Optional[asyncio.Task] = None
+        self._warning_service: Optional[Any] = None
+        self._stop_daily_warning = False
 
         # Register event handlers
         self._register_events()
@@ -108,3 +116,98 @@ class DiscordService:
         """
         self.logger.info("Running Discord bot (blocking)")
         self.client.run(self.token)
+
+    def start_daily_warning_check(
+        self,
+        warning_service: Any,
+        check_time: str = "09:00",
+    ) -> None:
+        """
+        Start daily warning check task.
+
+        Args:
+            warning_service: WarningService instance
+            check_time: Time of day for daily check in HH:MM format (PST, default: 09:00)
+        """
+        if self._daily_warning_task and not self._daily_warning_task.done():
+            self.logger.warning("Daily warning check task already running")
+            return
+
+        self._warning_service = warning_service
+        self._stop_daily_warning = False
+
+        async def _daily_warning_loop():
+            """Daily warning check loop."""
+            # Wait for bot to be ready
+            await self.client.wait_until_ready()
+
+            pst = pytz.timezone("America/Los_Angeles")
+
+            # Parse check time
+            try:
+                hour, minute = map(int, check_time.split(":"))
+                check_time_obj = dt_time(hour, minute)
+            except (ValueError, AttributeError):
+                self.logger.warning(f"Invalid check_time format: {check_time}, using default 09:00")
+                check_time_obj = dt_time(9, 0)
+
+            while not self._stop_daily_warning:
+                try:
+                    # Get current time in PST
+                    now_pst = datetime.now(pst)
+                    current_time = now_pst.time()
+
+                    # Calculate next check time
+                    next_check = datetime.combine(now_pst.date(), check_time_obj, pst)
+                    if current_time >= check_time_obj:
+                        # If check time has passed today, schedule for tomorrow
+                        next_check += timedelta(days=1)
+
+                    # Wait until check time
+                    wait_seconds = (next_check - now_pst).total_seconds()
+                    if wait_seconds > 0:
+                        next_check_str = next_check.strftime("%Y-%m-%d %H:%M:%S %Z")
+                        self.logger.info(
+                            f"Next warning check scheduled for {next_check_str}"
+                        )
+                        await asyncio.sleep(wait_seconds)
+
+                    if self._stop_daily_warning:
+                        break
+
+                    # Perform warning check
+                    self.logger.info("Running daily warning check")
+                    try:
+                        posted_count = await warning_service.check_and_post_warnings()
+                        self.logger.info(
+                            f"Daily warning check completed: {posted_count} warnings posted"
+                        )
+                    except Exception as e:
+                        self.logger.error(f"Error in daily warning check: {e}", exc_info=True)
+
+                    # Wait a bit before recalculating next check time
+                    await asyncio.sleep(60)
+
+                except asyncio.CancelledError:
+                    self.logger.info("Daily warning check task cancelled")
+                    break
+                except Exception as e:
+                    self.logger.error(f"Error in daily warning check loop: {e}", exc_info=True)
+                    # Wait a bit before retrying to avoid tight error loops
+                    await asyncio.sleep(300)  # 5 minutes
+
+        self._daily_warning_task = asyncio.create_task(_daily_warning_loop())
+        self.logger.info(
+            f"Started daily warning check task (check time: {check_time} PST)"
+        )
+
+    async def stop_daily_warning_check(self) -> None:
+        """Stop daily warning check task."""
+        self._stop_daily_warning = True
+        if self._daily_warning_task and not self._daily_warning_task.done():
+            self._daily_warning_task.cancel()
+            try:
+                await self._daily_warning_task
+            except asyncio.CancelledError:
+                pass
+            self.logger.info("Stopped daily warning check task")

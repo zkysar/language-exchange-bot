@@ -1,7 +1,7 @@
 """Schedule command handler."""
 
 import logging
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Optional
 
 import discord
@@ -194,11 +194,7 @@ class ScheduleCommand:
         total_days = len(events_in_range)
         embed.add_field(
             name="Summary",
-            value=(
-                f"Total Days: {total_days}\n"
-                f"Assigned: {assigned_count}\n"
-                f"Unassigned: {unassigned_count}"
-            ),
+            value=f"Total Days: {total_days}\nAssigned: {assigned_count}\nUnassigned: {unassigned_count}",
             inline=False,
         )
 
