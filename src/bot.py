@@ -150,6 +150,7 @@ class DiscordHostSchedulerBot:
             self.discord_service.tree,
             self.sheets_service,
             self.cache_service,
+            self.sync_service,
             config,
         )
 

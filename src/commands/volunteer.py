@@ -234,10 +234,15 @@ class VolunteerCommand:
 
         # Check for existing assignment (conflict detection)
         existing_event = self.cache.get("events", date_str)
-        if existing_event and existing_event.get("host_discord_id"):
-            existing_host_id = existing_event["host_discord_id"]
+        existing_host_id: Optional[str] = None
+        existing_host_username = "Unknown user"
+        if existing_event:
+            raw_host_id = existing_event.get("host_discord_id")
+            if raw_host_id is not None:
+                existing_host_id = str(raw_host_id).strip()
             existing_host_username = existing_event.get("host_username", "Unknown user")
 
+        if existing_host_id:
             error_msg = (
                 f"Date {format_date_pst(validated_date)} is already assigned to "
                 f"<@{existing_host_id}> ({existing_host_username})."

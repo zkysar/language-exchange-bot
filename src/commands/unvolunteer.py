@@ -127,7 +127,13 @@ class UnvolunteerCommand:
 
         # Check if target user is assigned to date
         existing_event = self.cache.get("events", date_str)
-        if not existing_event or existing_event.get("host_discord_id") != target_discord_id:
+        existing_host_id = None
+        if existing_event:
+            raw_host_id = existing_event.get("host_discord_id")
+            if raw_host_id is not None:
+                existing_host_id = str(raw_host_id).strip()
+
+        if not existing_host_id or existing_host_id != target_discord_id:
             primary_message = (
                 f"<@{target_discord_id}> is not assigned to host on "
                 f"{format_date_pst(validated_date)}."

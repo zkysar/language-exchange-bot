@@ -121,17 +121,25 @@ class SyncService:
             records = self.sheets.read_all_records(self.sheets.SHEET_SCHEDULE)
             self.cache.increment_quota("reads", 1)
 
+            def _normalize_sheet_value(value: Any) -> Optional[str]:
+                if value is None:
+                    return None
+                value_str = str(value).strip()
+                return value_str or None
+
             events_data = {}
             for record in records:
-                event_date = record.get("date")
+                event_date = _normalize_sheet_value(record.get("date"))
                 if event_date:
                     events_data[event_date] = {
-                        "host_discord_id": record.get("host_discord_id"),
-                        "host_username": record.get("host_username"),
-                        "recurring_pattern_id": record.get("recurring_pattern_id"),
-                        "assigned_at": record.get("assigned_at"),
-                        "assigned_by": record.get("assigned_by"),
-                        "notes": record.get("notes"),
+                        "host_discord_id": _normalize_sheet_value(record.get("host_discord_id")),
+                        "host_username": _normalize_sheet_value(record.get("host_username")),
+                        "recurring_pattern_id": _normalize_sheet_value(
+                            record.get("recurring_pattern_id")
+                        ),
+                        "assigned_at": _normalize_sheet_value(record.get("assigned_at")),
+                        "assigned_by": _normalize_sheet_value(record.get("assigned_by")),
+                        "notes": _normalize_sheet_value(record.get("notes")),
                     }
 
             self.cache.set_many("events", events_data)

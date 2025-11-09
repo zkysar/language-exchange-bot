@@ -2,7 +2,7 @@
 
 import logging
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 import discord
@@ -10,6 +10,7 @@ import discord
 from src.models import ActionType, Outcome, Warning, WarningSeverity
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService
+from src.utils.date_parser import get_current_date_pst
 
 
 class WarningService:
@@ -48,18 +49,55 @@ class WarningService:
         Returns:
             List of Warning objects for unassigned dates that need warnings
         """
-        warnings = []
+        warnings: list[Warning] = []
 
         try:
             # Get configuration values
-            warning_passive_days = self.config.get("warning_passive_days", 7)
-            warning_urgent_days = self.config.get("warning_urgent_days", 3)
+            warning_passive_days_raw = self.config.get("warning_passive_days", 7)
+            warning_urgent_days_raw = self.config.get("warning_urgent_days", 3)
+
+            try:
+                warning_passive_days = int(warning_passive_days_raw)
+            except (TypeError, ValueError):
+                self.logger.warning(
+                    "Invalid warning_passive_days value %r, defaulting to 7",
+                    warning_passive_days_raw,
+                )
+                warning_passive_days = 7
+
+            try:
+                warning_urgent_days = int(warning_urgent_days_raw)
+            except (TypeError, ValueError):
+                self.logger.warning(
+                    "Invalid warning_urgent_days value %r, defaulting to 3",
+                    warning_urgent_days_raw,
+                )
+                warning_urgent_days = 3
+
+            max_warning_window = max(warning_passive_days, warning_urgent_days)
 
             # Get all events from cache
             events = self.cache.get("events") or {}
-            today = date.today()
+            today = get_current_date_pst()
 
-            # Find unassigned dates
+            evaluated_dates: set[date] = set()
+
+            # Evaluate upcoming dates within warning window
+            for offset in range(max_warning_window + 1):
+                event_date = today + timedelta(days=offset)
+                evaluated_dates.add(event_date)
+
+                warning = self._evaluate_date_for_warning(
+                    events,
+                    event_date,
+                    today,
+                    warning_passive_days,
+                    warning_urgent_days,
+                )
+                if warning:
+                    warnings.append(warning)
+
+            # Evaluate cached dates that may not be contiguous in range
             for date_str, event_data in events.items():
                 try:
                     event_date = date.fromisoformat(date_str)
@@ -67,33 +105,21 @@ class WarningService:
                     self.logger.warning(f"Invalid date format in cache: {date_str}")
                     continue
 
-                # Skip past dates
-                if event_date < today:
+                if event_date in evaluated_dates:
                     continue
 
-                # Check if date is unassigned
-                host_discord_id = event_data.get("host_discord_id") if event_data else None
-                if not host_discord_id or host_discord_id == "":
-                    # Calculate days until event
-                    days_until = (event_date - today).days
+                days_until_event = (event_date - today).days
+                if days_until_event < 0 or days_until_event > max_warning_window:
+                    continue
 
-                    # Determine severity based on days until event
-                    if days_until <= warning_urgent_days:
-                        severity = WarningSeverity.URGENT
-                    elif days_until <= warning_passive_days:
-                        severity = WarningSeverity.PASSIVE
-                    else:
-                        # Too far in the future, don't warn yet
-                        continue
-
-                    # Generate warning
-                    warning = Warning(
-                        warning_id=str(uuid.uuid4()),
-                        event_date=event_date,
-                        severity=severity,
-                        days_until_event=days_until,
-                    )
-
+                warning = self._evaluate_date_for_warning(
+                    {date_str: event_data},
+                    event_date,
+                    today,
+                    warning_passive_days,
+                    warning_urgent_days,
+                )
+                if warning:
                     warnings.append(warning)
 
         except Exception as e:
@@ -351,3 +377,54 @@ class WarningService:
 
         except Exception as e:
             self.logger.error(f"Failed to create audit entry: {e}", exc_info=True)
+
+    def _evaluate_date_for_warning(
+        self,
+        events: dict[str, dict],
+        event_date: date,
+        today: date,
+        warning_passive_days: int,
+        warning_urgent_days: int,
+    ) -> Optional[Warning]:
+        """
+        Determine whether a given date needs a warning.
+
+        Args:
+            events: Dictionary of cached events
+            event_date: Date being evaluated
+            today: Today's date in PST
+            warning_passive_days: Passive warning threshold
+            warning_urgent_days: Urgent warning threshold
+
+        Returns:
+            Warning instance if a warning is needed, otherwise None
+        """
+        date_key = event_date.isoformat()
+        event_data = events.get(date_key)
+
+        host_discord_id = None
+        if event_data:
+            host_discord_id = event_data.get("host_discord_id")
+            if isinstance(host_discord_id, str):
+                host_discord_id = host_discord_id.strip()
+
+        if host_discord_id:
+            return None
+
+        days_until = (event_date - today).days
+        if days_until < 0:
+            return None
+
+        if days_until <= warning_urgent_days:
+            severity = WarningSeverity.URGENT
+        elif days_until <= warning_passive_days:
+            severity = WarningSeverity.PASSIVE
+        else:
+            return None
+
+        return Warning(
+            warning_id=str(uuid.uuid4()),
+            event_date=event_date,
+            severity=severity,
+            days_until_event=days_until,
+        )
