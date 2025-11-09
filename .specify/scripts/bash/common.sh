@@ -162,6 +162,25 @@ get_feature_paths() {
         has_git_repo="true"
     fi
 
+    # If we don't appear to be on a feature branch, try to detect a single available spec
+    if [[ ! "$effective_branch" =~ ^[0-9]{3}- ]]; then
+        local specs_dir="$repo_root/specs"
+        if [[ -d "$specs_dir" ]]; then
+            local spec_dirs=()
+            while IFS= read -r -d '' dir; do
+                spec_dirs+=("$(basename "$dir")")
+            done < <(find "$specs_dir" -maxdepth 1 -mindepth 1 -type d -print0 | sort -z)
+
+            if [[ ${#spec_dirs[@]} -eq 1 ]]; then
+                local fallback_branch="${spec_dirs[0]}"
+                if [[ "$effective_branch" != "$fallback_branch" ]]; then
+                    echo "[specify] Info: falling back to feature '$fallback_branch' (current branch: '$current_branch')" >&2
+                fi
+                effective_branch="$fallback_branch"
+            fi
+        fi
+    fi
+
     # Use prefix-based lookup to support multiple branches per spec
     local feature_dir=$(find_feature_dir_by_prefix "$repo_root" "$effective_branch")
 
