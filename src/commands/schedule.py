@@ -2,7 +2,7 @@
 
 import logging
 from datetime import timedelta
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 import discord
 from discord import app_commands
@@ -10,7 +10,8 @@ from discord import app_commands
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService
 from src.services.sync_service import SyncService
-from src.utils.date_parser import format_date_pst, get_current_date_pst
+from src.utils.date_parser import format_date_pst, format_date_short, get_current_date_pst
+from src.utils.date_suggestions import build_schedule_date_suggestions
 
 
 class ScheduleCommand:
@@ -37,6 +38,31 @@ class ScheduleCommand:
         self.sync = sync_service
         self.config = config
         self.logger = logging.getLogger("discord_host_scheduler.commands.schedule")
+
+    def build_schedule_date_choices(self, current: str) -> list[app_commands.Choice[str]]:
+        """
+        Build autocomplete choices for schedule date selection.
+
+        Args:
+            current: Current autocomplete input
+
+        Returns:
+            List of Discord application command choices
+        """
+        today = get_current_date_pst()
+        events_data = self.cache.get("events")
+        suggestions = build_schedule_date_suggestions(events_data, today, current)
+
+        choices: list[app_commands.Choice[str]] = []
+        for value, event_date, event in suggestions:
+            label = format_date_short(event_date)
+            status = self._format_schedule_status(event)
+            parts = [value, label]
+            if status:
+                parts.append(status)
+            display = " • ".join(parts)
+            choices.append(app_commands.Choice(name=display, value=value))
+        return choices
 
     async def handle(
         self,
@@ -242,6 +268,30 @@ class ScheduleCommand:
                 return "⚠️ Data may be out of date. Cache not synced yet."
         return None
 
+    @staticmethod
+    def _format_schedule_status(event: Optional[Mapping[str, Any]]) -> str:
+        """
+        Build a short status string for schedule autocomplete suggestions.
+
+        Args:
+            event: Event dictionary (may be None)
+
+        Returns:
+            Status string describing assignment, empty string if not applicable
+        """
+        if not event:
+            return "Unassigned"
+
+        host_username = event.get("host_username")
+        if host_username:
+            return f"Host: {host_username}"
+
+        host_id = event.get("host_discord_id")
+        if host_id:
+            return f"Host ID: {host_id}"
+
+        return "Unassigned"
+
 
 def register_schedule_command(
     tree: app_commands.CommandTree,
@@ -274,3 +324,14 @@ def register_schedule_command(
     ):
         """View upcoming host schedule."""
         await handler.handle(interaction, date, weeks)
+
+    @schedule_command.autocomplete("date")
+    async def schedule_date_autocomplete(
+        interaction: discord.Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:
+        """Provide autocomplete suggestions for schedule date selection."""
+        try:
+            return handler.build_schedule_date_choices(current)
+        except Exception:
+            handler.logger.exception("Failed to build schedule date suggestions")
+            return []

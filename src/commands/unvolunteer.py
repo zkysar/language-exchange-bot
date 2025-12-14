@@ -14,7 +14,13 @@ from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService
 from src.services.sync_service import SyncService
 from src.utils.auth import authorize_proxy_action
-from src.utils.date_parser import format_date_pst, validate_date_format_and_future
+from src.utils.date_parser import (
+    format_date_pst,
+    format_date_short,
+    get_current_date_pst,
+    validate_date_format_and_future,
+)
+from src.utils.date_suggestions import build_user_assignment_suggestions
 from src.utils.error_handler import get_command_context, handle_api_error, send_error_response
 from src.utils.logger import log_with_context
 
@@ -55,6 +61,43 @@ class UnvolunteerCommand:
         self.warning_service = warning_service
         self.logger = logging.getLogger("discord_host_scheduler.commands.unvolunteer")
 
+    def build_unvolunteer_date_choices(
+        self, interaction: discord.Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:
+        """
+        Build autocomplete choices for unvolunteer date selection.
+
+        Args:
+            interaction: Discord interaction carrying context (including optional user parameter)
+            current: Current autocomplete input
+
+        Returns:
+            List of application command choices
+        """
+        namespace_user = getattr(interaction.namespace, "user", None)
+        target_user = namespace_user or interaction.user
+        target_id = str(target_user.id)
+
+        today = get_current_date_pst()
+        events_data = self.cache.get("events")
+        suggestions = build_user_assignment_suggestions(events_data, today, target_id, current)
+
+        target_label = (
+            getattr(target_user, "display_name", None)
+            or getattr(target_user, "name", None)
+            or str(target_user)
+        )
+
+        choices: list[app_commands.Choice[str]] = []
+        for value, event_date, _ in suggestions:
+            label = format_date_short(event_date)
+            display = f"{value} • {label}"
+            if namespace_user is not None:
+                display = f"{display} • For {target_label}"
+            choices.append(app_commands.Choice(name=display, value=value))
+
+        return choices
+
     async def handle(
         self,
         interaction: discord.Interaction,
@@ -72,7 +115,8 @@ class UnvolunteerCommand:
         # Check maintenance mode
         if is_maintenance_mode():
             await interaction.response.send_message(
-                "⚠️ **Maintenance Mode Active**\n\n"(
+                (
+                    "⚠️ **Maintenance Mode Active**\n\n"
                     "The bot is currently in maintenance mode. "
                     "Please wait for the operation to complete."
                 ),
@@ -391,3 +435,14 @@ def register_unvolunteer_command(
     ):
         """Cancel hosting commitment for a specific date."""
         await handler.handle(interaction, date, user)
+
+    @unvolunteer_command.autocomplete("date")
+    async def unvolunteer_date_autocomplete(
+        interaction: discord.Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:
+        """Provide autocomplete suggestions for unvolunteer date selection."""
+        try:
+            return handler.build_unvolunteer_date_choices(interaction, current)
+        except Exception:
+            handler.logger.exception("Failed to build unvolunteer date suggestions")
+            return []

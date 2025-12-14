@@ -96,6 +96,21 @@ def format_date_pst(target_date: date) -> str:
     return dt_pst.strftime("%A, %B %d, %Y") + " (PST)"
 
 
+def format_date_short(target_date: date) -> str:
+    """
+    Format date as a short human-readable string with PST timezone.
+
+    Args:
+        target_date: Date to format
+
+    Returns:
+        Formatted date string (e.g., "Tue, Nov 11, 2025")
+    """
+    dt = datetime.combine(target_date, datetime.min.time())
+    dt_pst = PST.localize(dt)
+    return dt_pst.strftime("%a, %b %d, %Y")
+
+
 def get_current_date_pst() -> date:
     """
     Get current date in PST timezone.

@@ -226,6 +226,18 @@ class WarningService:
             warnings: List of urgent Warning objects
             organizer_role_ids: List of organizer role IDs to ping
         """
+        warning_urgent_days_raw = self.config.get("warning_urgent_days", 3)
+        try:
+            warning_urgent_days = int(warning_urgent_days_raw)
+        except (TypeError, ValueError):
+            self.logger.debug(
+                "Invalid warning_urgent_days value %r in config, defaulting to 3 for messaging",
+                warning_urgent_days_raw,
+            )
+            warning_urgent_days = 3
+
+        day_word = "day" if warning_urgent_days == 1 else "days"
+
         # Build role mentions for pinging
         role_mentions = []
         for role_id in organizer_role_ids:
@@ -237,15 +249,22 @@ class WarningService:
                 continue
 
         # Build message with role ping
+        urgent_banner = "**URGENT: Unassigned Dates Need Hosts!**"
         if role_mentions:
-            content = f"{' '.join(role_mentions)} **URGENT: Unassigned Dates Need Hosts!**"
+            mentions = " ".join(role_mentions)
+            content = f"{mentions} {urgent_banner}"
         else:
             content = "**🚨 URGENT: Unassigned Dates Need Hosts!**"
 
         # Create embed
+        urgent_description_lines = [
+            f"These dates need hosts within {warning_urgent_days} {day_word}.",
+            "Each entry shows exactly how long we have before the event goes hostless.",
+        ]
+
         embed = discord.Embed(
             title="🚨 Urgent Warning",
-            description="These dates need hosts within 3 days!",
+            description="\n".join(urgent_description_lines),
             color=discord.Color.red(),
             timestamp=datetime.now(),
         )
@@ -265,6 +284,18 @@ class WarningService:
             inline=False,
         )
 
+        embed.add_field(
+            name='What "urgent" means',
+            value=" ".join(
+                [
+                    f"Urgent warnings are sent when {warning_urgent_days} "
+                    f"{day_word} or fewer remain.",
+                    "Organizers are pinged so a host can be confirmed in time.",
+                ]
+            ),
+            inline=False,
+        )
+
         embed.set_footer(text=f"{len(warnings)} urgent warning(s)")
 
         await channel.send(content=content, embed=embed)
@@ -281,10 +312,39 @@ class WarningService:
             channel: Discord channel to post to
             warnings: List of passive Warning objects
         """
+        warning_passive_days_raw = self.config.get("warning_passive_days", 7)
+        warning_urgent_days_raw = self.config.get("warning_urgent_days", 3)
+
+        try:
+            warning_passive_days = int(warning_passive_days_raw)
+        except (TypeError, ValueError):
+            self.logger.debug(
+                "Invalid warning_passive_days value %r in config, defaulting to 7 for messaging",
+                warning_passive_days_raw,
+            )
+            warning_passive_days = 7
+
+        try:
+            warning_urgent_days = int(warning_urgent_days_raw)
+        except (TypeError, ValueError):
+            self.logger.debug(
+                "Invalid warning_urgent_days value %r in config, defaulting to 3 for messaging",
+                warning_urgent_days_raw,
+            )
+            warning_urgent_days = 3
+
+        passive_day_word = "day" if warning_passive_days == 1 else "days"
+        urgent_day_word = "day" if warning_urgent_days == 1 else "days"
+
         # Create embed
+        passive_description_lines = [
+            f"These dates need hosts within {warning_passive_days} {passive_day_word}.",
+            "Each entry shows exactly how long we have before they escalate to urgent.",
+        ]
+
         embed = discord.Embed(
             title="⚠️ Passive Warning",
-            description="These dates need hosts within 7 days.",
+            description="\n".join(passive_description_lines),
             color=discord.Color.orange(),
             timestamp=datetime.now(),
         )
@@ -301,6 +361,18 @@ class WarningService:
         embed.add_field(
             name="Unassigned Dates",
             value="\n".join(warning_list) or "None",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="What happens next",
+            value=" ".join(
+                [
+                    "If a host isn't confirmed before "
+                    f"{warning_urgent_days} {urgent_day_word} remain,",
+                    "this warning becomes urgent and organizers get pinged.",
+                ]
+            ),
             inline=False,
         )
 

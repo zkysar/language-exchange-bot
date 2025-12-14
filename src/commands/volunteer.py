@@ -3,7 +3,7 @@
 import logging
 import uuid
 from datetime import date, datetime
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 import discord
 from discord import app_commands
@@ -14,7 +14,13 @@ from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService
 from src.services.sync_service import SyncService
 from src.utils.auth import authorize_proxy_action
-from src.utils.date_parser import format_date_pst, validate_date_format_and_future
+from src.utils.date_parser import (
+    format_date_pst,
+    format_date_short,
+    get_current_date_pst,
+    validate_date_format_and_future,
+)
+from src.utils.date_suggestions import build_unassigned_date_suggestions
 from src.utils.error_handler import get_command_context, handle_api_error, send_error_response
 from src.utils.logger import log_with_context
 from src.utils.pattern_parser import (
@@ -162,6 +168,47 @@ class VolunteerCommand:
         self.config = config
         self.logger = logging.getLogger("discord_host_scheduler.commands.volunteer")
 
+    def build_volunteer_date_choices(self, current: str) -> list[app_commands.Choice[str]]:
+        """
+        Build autocomplete choices for volunteer date selection.
+
+        Args:
+            current: Current autocomplete input
+
+        Returns:
+            List of Discord application command choices
+        """
+        today = get_current_date_pst()
+        events_data = self.cache.get("events")
+        suggestions = build_unassigned_date_suggestions(events_data, today, current)
+
+        choices: list[app_commands.Choice[str]] = []
+        for value, event_date, event in suggestions:
+            choice_name = self._format_volunteer_choice_name(value, event_date, event)
+            choices.append(app_commands.Choice(name=choice_name, value=value))
+        return choices
+
+    @staticmethod
+    def _format_volunteer_choice_name(
+        value: str,
+        event_date: date,
+        event: Optional[Mapping[str, Any]],
+    ) -> str:
+        """
+        Format the display string for volunteer date suggestions.
+
+        Args:
+            value: ISO-formatted date string
+            event_date: Date object
+            event: Event dictionary from cache (None for fallback dates)
+
+        Returns:
+            Formatted choice label
+        """
+        status = "Open slot" if event is not None else "Available"
+        label = format_date_short(event_date)
+        return f"{value} • {label} • {status}"
+
     async def handle(
         self,
         interaction: discord.Interaction,
@@ -179,7 +226,8 @@ class VolunteerCommand:
         # Check maintenance mode
         if is_maintenance_mode():
             await interaction.response.send_message(
-                "⚠️ **Maintenance Mode Active**\n\n"(
+                (
+                    "⚠️ **Maintenance Mode Active**\n\n"
                     "The bot is currently in maintenance mode. "
                     "Please wait for the operation to complete."
                 ),
@@ -360,7 +408,8 @@ class VolunteerCommand:
         # Check maintenance mode
         if is_maintenance_mode():
             await interaction.response.send_message(
-                "⚠️ **Maintenance Mode Active**\n\n"(
+                (
+                    "⚠️ **Maintenance Mode Active**\n\n"
                     "The bot is currently in maintenance mode. "
                     "Please wait for the operation to complete."
                 ),
@@ -893,6 +942,17 @@ def register_volunteer_command(
     ):
         """Set up a recurring hosting pattern."""
         await handler.handle_recurring(interaction, pattern, user)
+
+    @volunteer_date_command.autocomplete("date")
+    async def volunteer_date_autocomplete(
+        interaction: discord.Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:
+        """Provide autocomplete suggestions for volunteer date selection."""
+        try:
+            return handler.build_volunteer_date_choices(current)
+        except Exception:
+            handler.logger.exception("Failed to build volunteer date suggestions")
+            return []
 
     # Register the group
     tree.add_command(volunteer_group)
