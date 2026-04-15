@@ -131,16 +131,13 @@ google-auth>=2.23.0       # Authentication for service accounts
 ### Rationale
 
 **Standard Library First**:
-- Python's `datetime` handles most date formats: `YYYY-MM-DD`, `MM/DD/YYYY`
-- `strptime()` for parsing structured formats
+- Python's `datetime` + `zoneinfo` cover all date/time needs; all dates are interpreted and displayed in `America/Los_Angeles` (DST handled automatically by `zoneinfo`)
 - `relativedelta` from `dateutil` for recurring patterns (e.g., "every 2nd Tuesday")
 - Minimal dependency addition aligns with Principle V
 
-**Natural Language Parsing**:
-- For patterns like "next Tuesday", "Dec 25":
-  - Simple regex + `datetime` for common patterns
-  - `dateutil.parser` for fallback (only if needed)
-- Avoid full NLP libraries (overkill, violates Principle V)
+**Date input**:
+- The bot does NOT parse free-form date strings. Date selection is via Discord slash command autocomplete populated with open (unassigned) future dates, so there is no user-facing date-parsing surface.
+- Natural-language parsing libraries are therefore not needed.
 
 **Recurring Patterns**:
 - Use `dateutil.relativedelta` for patterns like:

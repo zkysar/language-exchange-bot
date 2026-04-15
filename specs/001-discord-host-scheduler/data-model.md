@@ -52,7 +52,7 @@ The data model defines entities, relationships, validation rules, and state tran
 - `date` must be a valid future date (cannot be in the past)
 - `date` must be in YYYY-MM-DD format
 - `host_discord_id` must be valid Discord snowflake if provided
-- Only one host per date (enforced by unique constraint on `date`)
+- Only one host per date. **Google Sheets has no native unique constraint**; uniqueness is enforced in application code: all writes run under an in-process `asyncio.Lock`, the single-instance heartbeat lock prevents concurrent writers from different processes, and each write performs a read-modify-write with a pre-write conflict check.
 
 **Relationships**:
 - Many-to-one with `Host` (via `host_discord_id`)
@@ -72,7 +72,7 @@ The data model defines entities, relationships, validation rules, and state tran
 **Google Sheets Storage**:
 - Sheet: "Schedule" (primary data sheet)
 - Columns: `date`, `host_discord_id`, `host_username`, `recurring_pattern_id`, `assigned_at`, `assigned_by`, `notes`
-- Primary key: `date` (unique constraint)
+- Logical primary key: `date`. Uniqueness is enforced in application code under the heartbeat lock and in-process `asyncio.Lock`; Google Sheets itself does not enforce uniqueness.
 
 ---
 
@@ -113,7 +113,7 @@ The data model defines entities, relationships, validation rules, and state tran
    - Dates generated and assigned
 2. **Active → Inactive**: When `/unvolunteer recurring` command succeeds
    - `is_active` = false
-   - Affected dates remain assigned but pattern stops generating new dates
+   - Cascade: all future Schedule rows with `recurring_pattern_id` equal to this pattern AND `date` >= today are deleted (the row is cleared, leaving the date open for re-assignment). Past Schedule rows referencing this pattern are retained for audit. As a result, `/listdates` and schedule views will never display a recurring indicator that points at a deactivated pattern.
 3. **Active → Expired**: When `end_date` is reached
    - `is_active` = false (automatic)
 
@@ -181,10 +181,11 @@ The data model defines entities, relationships, validation rules, and state tran
 - `UNVOLUNTEER`: User unvolunteered from a date
 - `VOLUNTEER_RECURRING`: User set up recurring pattern
 - `UNVOLUNTEER_RECURRING`: User cancelled recurring pattern
-- `VIEW_SCHEDULE`: User viewed schedule (optional, may not log all views)
 - `WARNING_POSTED`: System posted warning about unassigned date
 - `SYNC_FORCED`: User forced synchronization with Google Sheets
 - `RESET`: Database reset performed (admin action)
+
+**Read operations are NOT audited.** `/schedule`, `/listdates`, `/help`, and `/warnings` (read-only manual check) do not produce audit entries.
 
 **Validation Rules**:
 - `timestamp` must be valid datetime
@@ -208,6 +209,15 @@ The data model defines entities, relationships, validation rules, and state tran
 - Structured JSON format for automated parsing
 - Include request context for debugging
 
+**Buffered writes**:
+Audit entries are not written to Google Sheets one-at-a-time. Instead they are enqueued in an in-memory buffer and flushed to the AuditLog sheet as a single `append` batch under any of the following conditions:
+
+1. **Time-based flush**: every 30 seconds while the buffer is non-empty.
+2. **Size-based flush**: when the buffer reaches 50 pending entries.
+3. **Graceful shutdown**: on SIGTERM / SIGINT / normal bot shutdown, the buffer is drained before exit.
+
+**Crash tradeoff**: if the bot crashes (SIGKILL, OOM, hardware failure) between flushes, any audit entries still in the buffer are lost. This is an accepted tradeoff to stay within the Google Sheets API write quota (Principle I). Operators who need stricter audit guarantees should reduce the flush interval or size threshold via Configuration, at the cost of higher quota usage.
+
 ---
 
 ### 6. Configuration
@@ -227,10 +237,12 @@ The data model defines entities, relationships, validation rules, and state tran
 |------------|------|---------|-------------|
 | `warning_passive_days` | integer | 7 | Days before event to post passive warning |
 | `warning_urgent_days` | integer | 3 | Days before event to post urgent warning |
-| `daily_check_time` | datetime | "09:00 PST" | Time of day for daily warning check |
-| `schedule_window_weeks` | integer | 8 | Default weeks to show in schedule view |
-| `organizer_role_ids` | json | [] | Discord role IDs that can use admin commands |
-| `host_privileged_role_ids` | json | [] | Discord role IDs that can volunteer for others |
+| `daily_check_time` | string | "09:00" | Local time-of-day (HH:MM, 24h) for daily warning check; interpreted in `daily_check_timezone` |
+| `daily_check_timezone` | string | "America/Los_Angeles" | IANA timezone name used with `daily_check_time`; handles DST via `zoneinfo` |
+| `schedule_window_weeks` | integer | 4 | Default weeks to show in schedule view (max 12) |
+| `member_role_ids` | json | [] | Discord role IDs for read-only members (responses are ephemeral) |
+| `host_role_ids` | json | [] | Discord role IDs for hosts (volunteer/unvolunteer self and others, run warnings) |
+| `admin_role_ids` | json | [] | Discord role IDs for admins (sync, reset, sheet operations); first admin is seeded here manually |
 | `schedule_channel_id` | string | null | Discord channel ID for schedule displays |
 | `warnings_channel_id` | string | null | Discord channel ID for warning posts |
 | `cache_ttl_seconds` | integer | 300 | Cache TTL for Google Sheets data (5 minutes) |
@@ -248,6 +260,35 @@ The data model defines entities, relationships, validation rules, and state tran
 **Google Sheets Storage**:
 - Sheet: "Configuration"
 - Columns: `setting_key`, `setting_value`, `setting_type`, `description`, `updated_at`
+
+---
+
+### 7. BotInstance (heartbeat lock)
+
+**Description**: A single-row lock stored in the Configuration sheet that enforces single-instance deployment. Only one bot process may hold the lock at a time.
+
+**Storage**: Three rows in the Configuration sheet with `setting_key` values `bot_instance_id`, `bot_instance_started_at`, and `bot_instance_heartbeat_at` (or, equivalently, a dedicated `BotInstance` sheet with a single data row — implementation choice).
+
+**Fields**:
+- `instance_id` (string, UUID4): identifies the currently-running bot process
+- `started_at` (datetime, ISO 8601 UTC): when the current instance booted
+- `heartbeat_at` (datetime, ISO 8601 UTC): most recent heartbeat refresh
+
+**Startup protocol**:
+
+1. Read the `BotInstance` row.
+2. If `heartbeat_at` is within the last **60 seconds**, another instance is presumed alive — the booting process MUST fatal-exit with a clear error message.
+3. Otherwise, generate a fresh `instance_id` (UUID4), write it along with `started_at = now()` and `heartbeat_at = now()`.
+4. Sleep **2 seconds**, then re-read the row. If `instance_id` no longer matches the one we wrote, another instance raced us — fatal-exit. Otherwise the lock is held.
+
+**Runtime protocol**:
+
+- A background task refreshes `heartbeat_at = now()` every **30 seconds**.
+- **Before every write operation** (any `/volunteer`, `/unvolunteer`, recurring cascade, sync, reset, audit flush), re-read the row and verify `instance_id` still matches the process-local value. If it does not, refuse the write and log the lock-loss event.
+
+**Shutdown protocol**: On graceful shutdown, the process clears `instance_id` (or writes a tombstone value) so that the next instance can start immediately without waiting for the 60-second heartbeat window to expire.
+
+**Relationships**: None (singleton lock).
 
 ---
 
@@ -287,9 +328,9 @@ RecurringPattern (1) ────< (many) AuditEntry
 | assigned_by | string | User who made assignment | 987654321098765432 |
 | notes | string | Optional event notes | Holiday special |
 
-**Constraints**:
-- `date` is unique (primary key)
-- `date` must be future date
+**Constraints** (enforced in application code, not by Google Sheets):
+- `date` is treated as the logical primary key; uniqueness enforced via the in-process `asyncio.Lock` plus the single-instance heartbeat lock (see BotInstance)
+- `date` must be a future date for new assignments
 - `host_discord_id` must be valid Discord ID if provided
 
 ### Sheet: "RecurringPatterns"
@@ -393,7 +434,7 @@ RecurringPattern (1) ────< (many) AuditEntry
 - Pattern end_date must be after start_date if provided
 
 ### Conflict Detection
-- Only one host per date (enforced by unique constraint on `date` in Schedule sheet)
+- Only one host per date (enforced in application code via the in-process `asyncio.Lock` and the single-instance heartbeat lock; Google Sheets itself does not enforce uniqueness)
 - Recurring pattern assignment checks for conflicts before committing
 - Warning generation only for unassigned dates
 
@@ -412,9 +453,10 @@ RecurringPattern (1) ────< (many) AuditEntry
    - Audit entry timestamps must be chronological
 
 3. **Business Rules**:
-   - Only one host per date (unique constraint)
+   - Only one host per date (enforced in application code under the heartbeat lock; Google Sheets has no native unique constraint)
    - Warning severity determined by days_until_event vs thresholds
    - Active recurring patterns generate dates on creation
+   - Deactivating a recurring pattern cascade-deletes all future unassigned Schedule rows that reference it
 
 ---
 

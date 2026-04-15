@@ -89,21 +89,20 @@ The bot will:
 **Goal**: A host volunteers to host an upcoming meetup.
 
 **Steps**:
-1. Host runs: `/volunteer date:2025-11-11`
-2. Bot validates date (must be future date)
-3. Bot checks if date is available
+1. Host types `/volunteer ` and the Discord autocomplete dropdown populates the `date:` parameter with the next N open (unassigned) dates
+2. Host selects a date from the dropdown: `/volunteer user:@self date:2025-11-11`
+3. Bot verifies the selected date is still open (heartbeat-locked, under in-process `asyncio.Lock`)
 4. Bot updates Google Sheets Schedule sheet
 5. Bot sends confirmation message
 
 **Expected Result**: 
-- Host receives confirmation: "✅ Successfully assigned @user to host on Tuesday, November 11, 2025 (PST)"
+- Host receives confirmation: "Successfully assigned @user to host on Tuesday, November 11, 2025 (America/Los_Angeles)"
 - Google Sheets updated with host assignment
-- Audit log entry created
+- Audit log entry created (buffered; flushed within 30s or at 50-entry threshold)
 
 **Error Cases**:
-- Date already assigned: Bot shows current host and suggests alternatives
-- Past date: Bot explains dates must be in the future
-- Invalid format: Bot shows format examples
+- Date already assigned (raced between autocomplete and submit): Bot shows current host and suggests alternatives
+- No open dates: Autocomplete dropdown is empty
 
 ---
 
@@ -141,8 +140,8 @@ The bot will:
 
 **Expected Result**:
 - Embed showing next 8 weeks with assigned hosts
-- Unassigned dates clearly marked: "[Unassigned] ⚠️"
-- Dates formatted in PST timezone
+- Unassigned dates clearly marked: "[Unassigned]"
+- Dates formatted in `America/Los_Angeles` (DST handled automatically)
 
 **Performance**: Response within 3 seconds for 12 weeks of data.
 
@@ -158,40 +157,41 @@ The bot will:
 - Configure `warnings_channel_id` in Configuration sheet
 
 **Automated Flow**:
-1. Bot runs daily check at configured time (default: 9:00 AM PST)
+1. Bot runs daily check at configured time (default: 09:00 `America/Los_Angeles`)
 2. Bot queries unassigned dates from Schedule sheet
 3. Bot calculates days until each unassigned date
 4. Bot posts warnings:
    - Passive (7+ days): Regular message in warnings channel
-   - Urgent (3 days): Urgent message with @organizer role ping
+   - Urgent (3 days): Urgent message pinging host and admin roles
 
 **Manual Trigger**:
-- Organizer runs: `/warnings`
-- Bot performs immediate check and posts warnings
+- Any user (member, host, or admin) runs: `/warnings`
+- Bot performs an immediate read-only check and responds ephemerally to the caller only; no messages are posted to the warnings channel by this command
 
 **Expected Result**:
-- Unassigned dates within thresholds trigger warnings
-- Warnings posted to configured channel
-- Urgent warnings ping organizer role
+- Unassigned dates within thresholds trigger warnings (automated daily check)
+- Automated warnings posted to configured channel
+- Urgent automated warnings ping host and admin roles
+- Manual `/warnings` response is ephemeral and visible only to the caller
 
 ---
 
-### Scenario 6: Proxy Actions (Organizer Assigns Host)
+### Scenario 6: Proxy Actions (Host or Admin Assigns Another User)
 
-**Goal**: Organizer assigns a host to a date on their behalf.
+**Goal**: A host or admin assigns another user to a date on their behalf.
 
 **Setup**:
-- User must have `host_privileged_role_ids` role (configured in Configuration sheet)
+- Invoking user must hold a Discord role listed in `host_role_ids` or `admin_role_ids` (Configuration sheet)
 
 **Steps**:
-1. Organizer runs: `/volunteer user:@hostuser123 date:2025-11-11`
-2. Bot verifies organizer has required role
+1. Host runs: `/volunteer user:@hostuser123 date:2025-11-11` (date chosen from autocomplete dropdown)
+2. Bot verifies invoker has host or admin role
 3. Bot assigns `@hostuser123` to date
 4. Bot sends confirmation
 
 **Expected Result**:
 - Host assigned successfully
-- Audit log shows organizer as `assigned_by`
+- Audit log shows invoker as `assigned_by`
 - Host receives notification (optional, can be added)
 
 ---
@@ -201,7 +201,7 @@ The bot will:
 **Goal**: Host needs to cancel their commitment.
 
 **Steps**:
-1. Host runs: `/unvolunteer date:2025-11-11`
+1. Host runs: `/unvolunteer user:@self date:2025-11-11` (date chosen from autocomplete dropdown of the user's assigned dates)
 2. Bot verifies host is assigned to date
 3. Bot removes assignment from Google Sheets
 4. Bot triggers immediate warning check
@@ -223,7 +223,7 @@ The bot will:
 - Bot detects changes and updates cache
 
 **Manual Sync**:
-- Organizer runs: `/sync`
+- Admin runs: `/sync`
 - Bot forces immediate sync with Google Sheets
 - Bot reports sync status
 
@@ -259,7 +259,7 @@ The bot will:
 
 **Recovery**:
 - Bot retries sync automatically
-- Organizer can force sync via `/sync` command
+- Admin can force sync via `/sync` command
 
 ---
 
@@ -268,10 +268,10 @@ The bot will:
 **Goal**: Recover from data corruption or inconsistency.
 
 **Steps**:
-1. Organizer runs: `/reset`
+1. Admin runs: `/reset`
 2. Bot shows reset instructions
-3. Organizer verifies Google Sheets contains correct data
-4. Organizer runs: `/reset confirm:yes`
+3. Admin verifies Google Sheets contains correct data
+4. Admin runs: `/reset confirm:yes`
 5. Bot clears local cache
 6. Bot reinitializes from Google Sheets
 7. Bot verifies data integrity
@@ -292,7 +292,7 @@ The bot will:
 
 - **Command Registration**: Bot registers slash commands on startup
 - **Command Handling**: Commands handled via discord.py interaction system
-- **Permissions**: Role-based access control via Discord roles
+- **Permissions**: Three-tier role-based access control (member/host/admin) via Discord role IDs in Configuration sheet
 - **Rate Limiting**: discord.py handles Discord API rate limits automatically
 
 ### Google Sheets Integration
@@ -331,8 +331,9 @@ The bot will:
 
 3. **Volunteer Command**:
    ```
-   /volunteer date:2025-11-11
+   /volunteer user:@self date:2025-11-11
    ```
+   (date selected from autocomplete dropdown)
    - Assigns host to date ✅
    - Updates Google Sheets ✅
    - Sends confirmation ✅
@@ -344,7 +345,7 @@ The bot will:
    - Shows schedule ✅
    - Response within 3 seconds ✅
 
-5. **Sync Command** (requires organizer role):
+5. **Sync Command** (requires admin role):
    ```
    /sync
    ```
@@ -370,11 +371,11 @@ The bot will:
 - `GOOGLE_SHEETS_CREDENTIALS_FILE`: Path to service account JSON key
 
 **Key Commands**:
-- `/volunteer [date]`: Volunteer for a date
-- `/volunteer recurring [pattern]`: Set up recurring pattern
-- `/schedule`: View schedule
-- `/sync`: Force sync (organizer only)
-- `/warnings`: Check warnings (organizer only)
+- `/volunteer user:[user] date:[date]`: Volunteer for a date (date via autocomplete)
+- `/volunteer recurring user:[user] pattern:[pattern]`: Set up recurring pattern
+- `/schedule`: View schedule (default 4 weeks, `weeks:` up to 12)
+- `/sync`: Force sync (admin only)
+- `/warnings`: Read-only warning check (all users; ephemeral response)
 
 **Performance Targets**:
 - Command acknowledgment: < 3 seconds

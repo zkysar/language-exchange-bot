@@ -30,10 +30,19 @@ A Discord bot that manages host volunteering for recurring meetups through a Goo
 
 **Constraints**:
 - Google Sheets API quota limits (per user per 100 seconds, per project per day) - must implement batching and caching
-- Single timezone (PST) for MVP - all dates interpreted/displayed in PST
-- Strict date format: YYYY-MM-DD only (rejects all other formats)
-- First-wins concurrent booking conflict resolution
+- All dates interpreted and displayed in `America/Los_Angeles` via zoneinfo (handles DST automatically)
+- Date selection via Discord slash command autocomplete only; no free-form date parsing
+- First-wins concurrent booking conflict resolution, guaranteed only under single-instance deployment (see "Single-instance deployment constraint" below)
 - Fail-fast behavior when API rate limits exceeded
+
+### Single-instance deployment constraint
+
+The bot is designed to run as a single process. The first-wins conflict guarantee in FR-004 depends on this assumption and is enforced at two layers:
+
+1. **In-process serialization**: A module-level `asyncio.Lock` wraps every write path (`/volunteer`, `/unvolunteer`, recurring cascade, sync, reset). Only one write can be in flight within a process at a time.
+2. **Sheets heartbeat lock**: A dedicated `BotInstance` row in the Configuration sheet stores `instance_id`, `started_at`, and `heartbeat_at`. On startup the bot reads this row; if `heartbeat_at` is within the last 60 seconds, the bot fatal-exits. Otherwise it writes its own `instance_id` plus fresh timestamps, sleeps 2 seconds, and re-reads the row to confirm no other instance raced it. A background task refreshes `heartbeat_at` every 30 seconds. Before every write operation the bot re-verifies that the stored `instance_id` still matches its own; if not, the write is refused.
+
+Running multiple instances simultaneously is unsupported. Operators must stop the previous instance before starting a new one (or wait >60s after a crash for the heartbeat to expire).
 
 **Scale/Scope**:
 - Target: Community Discord server with ~50-200 active hosts
@@ -118,10 +127,11 @@ A Discord bot that manages host volunteering for recurring meetups through a Goo
 
 ### Principle IX: Authentication & Authorization ✅
 - **Status**: COMPLIANT
-  - Role-based access control via Discord roles (role IDs in Configuration sheet)
-  - Standard users: volunteer/unvolunteer themselves, view schedules
-  - Host-privileged users: volunteer/unvolunteer on behalf of any user
-  - Admin users: modify configuration, force sync, diagnostic commands
+  - Three-tier role-based access control via Discord roles (role IDs in Configuration sheet: `member_role_ids`, `host_role_ids`, `admin_role_ids`)
+  - Members: view schedule, view own dates; responses are ephemeral (only visible to invoking user)
+  - Hosts: member capabilities plus volunteer/unvolunteer self and others, run warnings
+  - Admins: host capabilities plus force sync, reset, diagnostic commands, direct sheet operations
+  - Role membership is managed in Discord; role→tier mapping is edited directly in the Configuration sheet (no bot commands to add/remove roles)
   - Authorization failures logged with user ID, command, timestamp
   - Clear error messages for unauthorized commands
 
@@ -156,8 +166,8 @@ A Discord bot that manages host volunteering for recurring meetups through a Goo
   - All commands include help text accessible via `/help [command]`
   - `/help` with no arguments lists all commands with brief descriptions
   - Command responses are clear, concise, and actionable
-  - All dates and times displayed in Pacific Standard Time (PST/PDT)
-  - Date inputs accept strict format: YYYY-MM-DD only (rejects other formats with error)
+  - All dates and times displayed in `America/Los_Angeles` (handles DST via zoneinfo)
+  - Date inputs use Discord slash command autocomplete; no free-form date parsing
   - Error messages never show stack traces (log technical details, show friendly message)
   - Long responses formatted for readability (tables, embeds, chunked)
   - Bot acknowledges long-running commands within 3 seconds

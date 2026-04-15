@@ -41,42 +41,50 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 
 ---
 
-## User Commands
+## Authorization Tiers
+
+The bot uses a three-tier role model driven by Discord role IDs in the Configuration sheet (`member_role_ids`, `host_role_ids`, `admin_role_ids`). Tier membership is determined by checking the invoking user's Discord roles against these lists at command time. Role assignment is managed in Discord itself — the bot does not provide commands to add or remove members/hosts/admins.
+
+- **member**: read-only access (`/schedule`, `/listdates` for self, `/help`). Responses MUST be ephemeral (visible only to the invoking user).
+- **host**: member capabilities plus write actions (`/volunteer`, `/unvolunteer`, proxy actions targeting other users, `/warnings`). Responses are public in-channel.
+- **admin**: host capabilities plus technical operations (`/sync`, `/reset`, sheet operations). The first admin role ID is seeded in the Configuration sheet manually.
+
+---
+
+## Commands
 
 ### `/volunteer`
 
 **Description**: Sign up to host on a specific date.
 
-**Parameters**:
-- `user` (user, optional): Discord user to volunteer (defaults to command user). Requires host-privileged role if specifying other user.
-- `date` (string, required): Date in YYYY-MM-DD, MM/DD/YYYY, or natural language format (e.g., "next Tuesday", "Dec 25")
+**Parameters** (in this order):
+- `user` (user, optional): Discord user to volunteer (defaults to command user). Requires host or admin role if specifying another user.
+- `date` (string, required): Date selected from a Discord **autocomplete dropdown** populated with the next N open (unassigned) future dates. Free-form date input is not accepted.
 
-**Authorization**: 
-- Standard users: Can volunteer themselves
-- Host-privileged users: Can volunteer any user
+**Authorization**:
+- Members: NOT authorized to volunteer (read-only tier)
+- Hosts / Admins: Can volunteer themselves or any other user
 
 **Success Response**:
 - Confirms assignment
-- Shows assigned date in PST timezone
+- Shows assigned date in `America/Los_Angeles` (DST handled by zoneinfo)
 - Displays updated schedule if requested
 
 **Error Cases**:
-- Date already assigned: Shows current host and suggests alternatives
-- Invalid date format: Shows format examples
-- Past date: Explains dates must be in the future
+- Date already assigned (raced between autocomplete population and submit): Shows current host and suggests alternatives
 - Authorization failure: Explains required permissions
 
 **Example**:
 ```
 /volunteer user:@user123 date:2025-11-11
-→ "✅ Successfully assigned @user123 to host on Tuesday, November 11, 2025 (PST)"
+→ "Successfully assigned @user123 to host on Tuesday, November 11, 2025 (America/Los_Angeles)"
 ```
 
 **Contract Test Requirements**:
-- Verify date parsing accepts multiple formats
+- Verify autocomplete handler returns only open (unassigned) future dates
 - Verify authorization checks work correctly
-- Verify conflict detection prevents double-booking
-- Verify PST timezone conversion
+- Verify conflict detection prevents double-booking under the heartbeat lock
+- Verify date display uses `America/Los_Angeles` via zoneinfo
 
 ---
 
@@ -85,7 +93,7 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 **Description**: Set up recurring hosting pattern (e.g., "every 2nd Tuesday").
 
 **Parameters**:
-- `user` (user, optional): Discord user (defaults to command user). Requires host-privileged role if specifying other user.
+- `user` (user, optional): Discord user (defaults to command user). Requires host or admin role if specifying other user.
 - `pattern` (string, required): Recurring pattern description (e.g., "every 2nd Tuesday", "monthly", "biweekly")
 
 **Authorization**: Same as `/volunteer`
@@ -125,9 +133,9 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 
 **Description**: Remove yourself (or another user) from a specific date.
 
-**Parameters**:
-- `user` (user, optional): Discord user to unvolunteer (defaults to command user). Requires host-privileged role if specifying other user.
-- `date` (string, required): Date in YYYY-MM-DD, MM/DD/YYYY, or natural language format
+**Parameters** (in this order):
+- `user` (user, optional): Discord user to unvolunteer (defaults to command user). Requires host or admin role if specifying another user.
+- `date` (string, required): Date selected from a Discord **autocomplete dropdown** populated with the target user's currently-assigned future dates. Free-form date input is not accepted.
 
 **Authorization**: Same as `/volunteer`
 
@@ -137,14 +145,13 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 - Shows warning if date was within warning threshold
 
 **Error Cases**:
-- User not assigned to date: Shows current assignment
-- Invalid date: Shows format examples
+- User not assigned to date (raced): Shows current assignment
 - Authorization failure: Explains required permissions
 
 **Example**:
 ```
 /unvolunteer user:@user123 date:2025-11-11
-→ "✅ Removed @user123 from Tuesday, November 11, 2025"
+→ "Removed @user123 from Tuesday, November 11, 2025"
 → [If within warning threshold]: "⚠️ Warning: This date is now unassigned and needs a volunteer!"
 ```
 
@@ -160,15 +167,15 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 **Description**: Cancel a recurring hosting pattern.
 
 **Parameters**:
-- `user` (user, optional): Discord user (defaults to command user). Requires host-privileged role if specifying other user.
+- `user` (user, optional): Discord user (defaults to command user). Requires host or admin role if specifying other user.
 
 **Authorization**: Same as `/volunteer`
 
 **Success Response**:
-- Shows all affected dates
+- Shows all affected future dates
 - Asks for confirmation
-- Deactivates pattern after confirmation
-- Note: Assigned dates remain assigned, pattern stops generating new dates
+- On confirmation: deactivates the pattern AND cascade-deletes every future Schedule row whose `recurring_pattern_id` matches (past rows are kept for audit)
+- No future dates continue to display a recurring indicator for the deactivated pattern
 
 **Error Cases**:
 - No active recurring pattern for user: Lists user's patterns
@@ -177,19 +184,19 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 **Example**:
 ```
 /unvolunteer recurring user:@user123
-→ "This will cancel @user123's recurring pattern 'every 2nd Tuesday'
-   Affected future dates:
+→ "This will cancel @user123's recurring pattern 'every 2nd Tuesday' and
+   remove the following future assignments (past dates are kept for audit):
    - Tuesday, November 25, 2025
    - Tuesday, December 9, 2025
    ...
-   Note: Already assigned dates will remain assigned.
    Confirm? (yes/no)"
 ```
 
 **Contract Test Requirements**:
-- Verify pattern deactivation
+- Verify pattern deactivation (`is_active = FALSE`)
+- Verify cascade deletion of future Schedule rows referencing the pattern
+- Verify past Schedule rows are retained
 - Verify confirmation flow
-- Verify assigned dates remain assigned
 
 ---
 
@@ -200,7 +207,9 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 **Parameters**:
 - `user` (user, optional): Discord user (defaults to command user)
 
-**Authorization**: Anyone can view any user's dates (read-only)
+**Authorization**:
+- Members: Can only run `/listdates` for themselves (no `user` parameter or `user` = self); responses are ephemeral
+- Hosts / Admins: Can view any user's dates; responses are public
 
 **Success Response**:
 - Lists all assigned dates for user (next 12 weeks)
@@ -231,10 +240,12 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 **Description**: View upcoming host schedule.
 
 **Parameters**:
-- `date` (string, optional): Specific date to check (defaults to showing next 4-8 weeks)
-- `weeks` (integer, optional): Number of weeks to show (defaults to config value, max 12)
+- `date` (string, optional): Specific date to check (defaults to showing the configured schedule window)
+- `weeks` (integer, optional): Number of weeks to show. Default is **4**; maximum is **12**.
 
-**Authorization**: Anyone can view schedule (read-only)
+**Authorization**:
+- Members: Authorized; responses are ephemeral
+- Hosts / Admins: Authorized; responses are public
 
 **Success Response**:
 - Shows schedule table with dates and assigned hosts
@@ -258,7 +269,7 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 
 **Contract Test Requirements**:
 - Verify schedule queries return within 3 seconds for 12 weeks
-- Verify PST timezone conversion
+- Verify `America/Los_Angeles` timezone conversion via zoneinfo
 - Verify unassigned date marking
 
 ---
@@ -270,7 +281,7 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 **Parameters**:
 - `command` (string, optional): Specific command name (shows detailed help)
 
-**Authorization**: Anyone can view help
+**Authorization**: All tiers (member/host/admin) can view help; member responses are ephemeral
 
 **Success Response**:
 - Lists all commands with brief descriptions (if no command specified)
@@ -283,10 +294,10 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 → "**/volunteer** - Sign up to host on a specific date
    Parameters:
    - user: Discord user (optional, defaults to you)
-   - date: Date in YYYY-MM-DD, MM/DD/YYYY, or natural language
+   - date: Selected from the autocomplete dropdown of open dates
    Examples:
-   /volunteer date:2025-11-11
-   /volunteer user:@user123 date:next Tuesday"
+   /volunteer user:@self date:2025-11-11
+   /volunteer user:@user123 date:2025-11-18"
 ```
 
 **Contract Test Requirements**:
@@ -295,42 +306,42 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 
 ---
 
-## Administrative Commands
-
 ### `/warnings`
 
-**Description**: Manually trigger warning check for unassigned dates.
+**Description**: Read-only manual check of unassigned dates within warning thresholds.
 
 **Parameters**: None
 
-**Authorization**: Requires organizer role (admin)
+**Authorization**: Available to **all users** (member, host, admin). No role restriction.
+
+**Response**: Ephemeral — visible only to the invoking user. This command does NOT post to any shared channel; it only reports to the caller. (Scheduled automated warnings still post to the configured warnings channel — that is a separate path.)
 
 **Success Response**:
-- Shows all unassigned dates within warning thresholds
-- Posts warnings to configured channel if any found
+- Lists all unassigned dates within warning thresholds in an ephemeral reply
 - Reports "No warnings" if all dates assigned
 
 **Error Cases**:
-- Authorization failure: Explains required organizer role
 - API failure: Shows error and suggests retry
 
 **Example**:
 ```
 /warnings
-→ "⚠️ Warning Check Results:
+→ (ephemeral) "Warning Check Results:
    Urgent (3 days):
    - Tuesday, November 7, 2025
    Passive (7+ days):
-   - Tuesday, November 11, 2025
-   Warnings posted to #schedule channel."
+   - Tuesday, November 11, 2025"
 ```
 
 **Contract Test Requirements**:
-- Verify authorization checks
-- Verify warning generation logic
-- Verify Discord channel posting
+- Verify command is callable without any role check
+- Verify response is ephemeral (`ephemeral=True`)
+- Verify no message is posted to any shared channel by this command
+- Verify warning generation logic (read-only)
 
 ---
+
+## Administrative Commands
 
 ### `/sync`
 
@@ -338,7 +349,7 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 
 **Parameters**: None
 
-**Authorization**: Requires organizer role (admin)
+**Authorization**: Requires admin role (Discord role in `admin_role_ids`)
 
 **Success Response**:
 - Confirms sync started
@@ -347,7 +358,7 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 - Shows any conflicts resolved
 
 **Error Cases**:
-- Authorization failure: Explains required organizer role
+- Authorization failure: Explains required admin role
 - Google Sheets API failure: Shows error and suggests retry
 - Quota exceeded: Shows quota status and suggests retry later
 
@@ -372,7 +383,7 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 
 **Parameters**: None
 
-**Authorization**: Requires organizer role (admin)
+**Authorization**: Requires admin role (Discord role in `admin_role_ids`)
 
 **Success Response**:
 - Shows reset procedure instructions

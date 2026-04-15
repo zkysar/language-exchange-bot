@@ -12,6 +12,20 @@ This document contains the implementation tasks organized by user story priority
 **User Stories**: 8 (P1: 2, P2: 3, P3: 3)  
 **MVP Scope**: User Stories 1 & 2 (P1) - Volunteer for Single Event & View Schedule
 
+> **PREREQUISITE: Phase 12 role-key rework (T200–T212) MUST be completed before any dependent task below is marked complete.**
+>
+> Phase 12 migrates the Configuration schema from the old `organizer_role_ids` / `host_privileged_role_ids` keys to the current `member_role_ids` / `host_role_ids` / `admin_role_ids` keys, and introduces ephemeral responses for member-tier commands. The following earlier tasks were written against the old key names and depend on Phase 12 completing first:
+>
+> - **T032** — auth utility (three-tier `is_member`/`is_host`/`is_admin`)
+> - **T075, T076, T077, T078, T079, T080** (Phase 7 / US7 Proxy Actions) — all reference `host_role_ids` / `admin_role_ids` and the three-tier model
+> - **T083** — WarningService urgent-warning ping (host + admin roles)
+> - **T087, T088** — `/warnings` registration and authorization (see also Decision 3 below: this command is now read-only and callable by all users)
+> - **T096** — `/sync` authorization (admin role)
+> - **T109** — `/reset` authorization (admin role)
+>
+> Do not check any of these boxes until T200–T212 have been executed and `src/utils/auth.py`, `src/services/sheets_service.py`, and `src/models/configuration.py` all use the new key names.
+
+
 ---
 
 ## Implementation Strategy
@@ -122,9 +136,9 @@ Setup → Foundational → US1/US2 (parallel)
 
 ### Utilities
 
-- [x] T030 [P] Create date_parser utility in src/utils/date_parser.py with YYYY-MM-DD format validation, future date validation, and PST timezone handling
+- [x] T030 [P] Create date utility in src/utils/date_parser.py with future-date validation and `America/Los_Angeles` timezone handling via `zoneinfo` (handles DST). No free-form parsing; date values originate from the Discord autocomplete handler which supplies already-canonical YYYY-MM-DD strings.
 - [x] T031 [P] Create pattern_parser utility in src/utils/pattern_parser.py with recurring pattern parsing (every Nth weekday, monthly, biweekly) and dateutil.relativedelta conversion
-- [x] T032 [P] Create auth utility in src/utils/auth.py with Discord role-based authorization checking, organizer role validation, and host-privileged role validation
+- [x] T032 [P] Create auth utility in src/utils/auth.py with Discord role-based authorization checking for three-tier model: `is_member`, `is_host`, `is_admin` against `member_role_ids`/`host_role_ids`/`admin_role_ids` in Configuration sheet. **NOTE: Needs rework — originally implemented against old organizer/host-privileged model; see T205 below.**
 - [x] T033 [P] Create logger utility in src/utils/logger.py with structured JSON logging setup, console and file output configuration
 
 ### Bot Entry Point
@@ -150,7 +164,7 @@ Setup → Foundational → US1/US2 (parallel)
 ### Implementation Tasks
 
 - [x] T035 [US1] Create volunteer command handler in src/commands/volunteer.py with single date volunteering logic
-- [x] T036 [US1] Implement date validation in volunteer command (YYYY-MM-DD format, future date check) using src/utils/date_parser.py
+- [x] T036 [US1] Implement the `/volunteer` `date:` autocomplete handler in src/commands/volunteer.py: query the Schedule sheet (or cache) for the next N open (unassigned) future dates and return them as autocomplete choices. Free-form date parsing is not supported — the command only accepts values chosen from the dropdown, which are already canonical YYYY-MM-DD strings. Validate the chosen value is still open and still in the future at submit time.
 - [x] T037 [US1] Implement conflict detection in volunteer command (check existing assignments in Schedule sheet)
 - [x] T038 [US1] Implement first-wins conflict resolution in volunteer command (immediate error if date already assigned)
 - [x] T039 [US1] Implement Google Sheets update in volunteer command (update Schedule sheet via SheetsService)
@@ -208,6 +222,7 @@ Setup → Foundational → US1/US2 (parallel)
 ### Implementation Tasks
 
 - [x] T055 [US3] Create unvolunteer command handler in src/commands/unvolunteer.py with single date cancellation logic
+- [x] T055a [US3] Implement the `/unvolunteer` `date:` autocomplete handler in src/commands/unvolunteer.py: return only the target user's currently-assigned future dates. Free-form date parsing is not supported.
 - [x] T056 [US3] Implement assignment validation in unvolunteer command (verify host is assigned to date)
 - [x] T057 [US3] Implement Google Sheets update in unvolunteer command (clear host assignment in Schedule sheet)
 - [x] T058 [US3] Implement audit logging in unvolunteer command (create AuditEntry via SheetsService)
@@ -251,25 +266,25 @@ Setup → Foundational → US1/US2 (parallel)
 
 ## Phase 7: User Story 7 - Proxy Actions (P2)
 
-**Goal**: Organizers can volunteer/unvolunteer users on their behalf.
+**Goal**: Hosts and admins can volunteer/unvolunteer users on their behalf.
 
-**Independent Test**: Organizer can run `/volunteer user:@otheruser date:2025-11-11`, verify authorization check, assignment made, and audit log shows organizer as assigned_by.
+**Independent Test**: A host can run `/volunteer user:@otheruser date:2025-11-11`, verify authorization check, assignment made, and audit log shows invoker as assigned_by.
 
 **Test Criteria**:
-- Command checks organizer has host-privileged role
+- Command checks invoker has host or admin role (via `host_role_ids` / `admin_role_ids`)
 - Command assigns specified user to date
-- Command sets assigned_by field to organizer's Discord ID
+- Command sets assigned_by field to invoker's Discord ID
 - Command creates audit log entry with proxy action details
 - Authorization failures return clear error messages
 
 ### Implementation Tasks
 
-- [ ] T075 [US7] Implement authorization check in volunteer command (check host-privileged role when user parameter differs from command user)
-- [ ] T076 [US7] Implement proxy action handling in volunteer command (set assigned_by field to organizer's Discord ID)
-- [ ] T077 [US7] Implement authorization check in unvolunteer command (check host-privileged role when user parameter differs from command user)
+- [ ] T075 [US7] Implement authorization check in volunteer command (require host or admin role for any write; proxy actions allowed when invoker is host/admin)
+- [ ] T076 [US7] Implement proxy action handling in volunteer command (set assigned_by field to invoker's Discord ID)
+- [ ] T077 [US7] Implement authorization check in unvolunteer command (require host or admin role; proxy actions allowed when invoker is host/admin)
 - [ ] T078 [US7] Implement proxy action handling in unvolunteer command (set assigned_by field in audit log)
-- [ ] T079 [US7] Update auth utility in src/utils/auth.py with host-privileged role checking function
-- [ ] T080 [US7] Implement error handling for authorization failures (clear error messages explaining required permissions)
+- [ ] T079 [US7] Update auth utility in src/utils/auth.py with three-tier `is_member` / `is_host` / `is_admin` functions reading `member_role_ids` / `host_role_ids` / `admin_role_ids`
+- [ ] T080 [US7] Implement error handling for authorization failures (clear error messages explaining required tier)
 
 ---
 
@@ -283,7 +298,7 @@ Setup → Foundational → US1/US2 (parallel)
 - Daily check runs at configured time
 - Warning severity calculated correctly (passive for 7+ days, urgent for 3 days)
 - Warnings posted to configured Discord channel
-- Urgent warnings ping organizer role
+- Urgent warnings ping host and admin roles
 - Immediate warning check triggered after unvolunteer action
 - Manual warning check via /warnings command works
 
@@ -291,12 +306,12 @@ Setup → Foundational → US1/US2 (parallel)
 
 - [x] T081 [US5] Create WarningService in src/services/warning_service.py with warning generation, severity calculation, and posting logic
 - [x] T082 [US5] Implement warning check in WarningService (query unassigned dates, calculate days until event, determine severity)
-- [x] T083 [US5] Implement warning posting in WarningService (post to Discord channel, ping organizer role for urgent warnings)
+- [x] T083 [US5] Implement warning posting in WarningService (post to Discord channel, ping host and admin roles for urgent warnings). **NOTE: originally implemented to ping organizer role; needs rework to ping host+admin per new three-tier model — see T205.**
 - [x] T084 [US5] Implement daily scheduled task in src/services/discord_service.py (use discord.py tasks for daily warning check at configured time)
 - [x] T085 [US5] Create warnings command handler in src/commands/warnings.py with manual warning check trigger
 - [x] T086 [US5] Implement immediate warning check in unvolunteer command (call WarningService.check_warnings after successful removal)
-- [x] T087 [US5] Register /warnings slash command in src/services/discord_service.py (admin-only, no parameters)
-- [x] T088 [US5] Implement authorization check in warnings command (require organizer role)
+- [x] T087 [US5] Register /warnings slash command in src/services/discord_service.py (no parameters; available to ALL users — no role restriction; response MUST be ephemeral / `ephemeral=True`)
+- [x] T088 [US5] Ensure /warnings performs a read-only check and responds ephemerally to the caller only; remove any authorization gate and remove any code path that posts to a shared channel from this command. Automated scheduled warnings (T084) remain separate.
 - [x] T089 [US5] Implement error handling in warnings command (API failures, missing channel configuration)
 
 ---
@@ -323,7 +338,7 @@ Setup → Foundational → US1/US2 (parallel)
 - [x] T093 [US6] Implement conflict resolution in SyncService (Google Sheets is authoritative, cache conflicts resolved by Sheets data)
 - [x] T094 [US6] Implement sync command handler in src/commands/sync.py with force sync logic
 - [x] T095 [US6] Register /sync slash command in src/services/discord_service.py (admin-only, no parameters)
-- [x] T096 [US6] Implement authorization check in sync command (require organizer role)
+- [x] T096 [US6] Implement authorization check in sync command (require admin role). **NOTE: originally required organizer role; semantically equivalent but now reads `admin_role_ids` — see T205.**
 - [x] T097 [US6] Implement sync status reporting in sync command (report number of records synced, conflicts resolved)
 - [x] T098 [US6] Implement error handling in sync command (API failures, quota exceeded, cache staleness warnings)
 - [x] T099 [US6] Implement cache staleness warning in all read operations (show warning when using stale cache due to API failure)
@@ -355,7 +370,7 @@ Setup → Foundational → US1/US2 (parallel)
 - [x] T106 [US8] Implement maintenance mode in reset command (prevent user interactions during reset operation)
 - [x] T107 [US8] Implement audit logging in reset command (create AuditEntry for reset action)
 - [x] T108 [US8] Register /reset slash command in src/services/discord_service.py (admin-only, no parameters)
-- [x] T109 [US8] Implement authorization check in reset command (require organizer role)
+- [x] T109 [US8] Implement authorization check in reset command (require admin role). **NOTE: originally required organizer role; now reads `admin_role_ids` — see T205.**
 - [x] T110 [US8] Implement error handling in reset command (reset failures, data integrity issues, recovery procedures)
 
 ---
@@ -431,7 +446,7 @@ Setup → Foundational → US1/US2 (parallel)
 
 - [ ] T151 Implement listdates command integration (allow users to see their upcoming dates)
 - [ ] T152 Implement help text for all commands (accessible via /help [command])
-- [ ] T153 Implement PST timezone handling throughout (all dates displayed in PST, all date operations use PST)
+- [ ] T153 Implement `America/Los_Angeles` timezone handling throughout via `zoneinfo` (all dates displayed and computed in that zone; DST handled automatically). See also T222.
 
 ---
 
@@ -499,6 +514,53 @@ This provides:
 - Phases 5-7: Enhanced features (cancellation, recurring patterns, proxy actions)
 - Phases 8-10: Advanced features (warnings, sync, reset)
 - Phase 11: Polish and optimization
+
+---
+
+## Phase 12: Three-Tier Role Model Rework
+
+**Goal**: Migrate authorization from the original two-role model (organizer, host-privileged) to the three-tier model (member, host, admin) specified in FR-026..FR-028. Role assignment is managed in Discord; role→tier mapping lives in the Configuration sheet and is edited directly there (no bot commands).
+
+**Context**: Earlier phases (T032, T083, T088, T096, T109, and the US7 proxy tasks) were written against an `organizer_role_ids` / `host_privileged_role_ids` Configuration schema. The spec has since been updated to use `member_role_ids`, `host_role_ids`, and `admin_role_ids`. Member responses must be ephemeral.
+
+**Independent Test**: A member (no host/admin role) runs `/schedule` and sees an ephemeral response; the same user runs `/volunteer` and is rejected with a clear authorization error. A host runs `/volunteer user:@other date:...` successfully. An admin runs `/sync` successfully while a host is rejected.
+
+### Implementation Tasks
+
+- [ ] T200 [REWORK] Update Configuration sheet schema in src/services/sheets_service.py (and any seeders/fixtures) to read `member_role_ids`, `host_role_ids`, `admin_role_ids`; remove `organizer_role_ids` and `host_privileged_role_ids`
+- [ ] T201 [REWORK] Update Configuration entity/model in src/models/configuration.py to expose the three role lists
+- [ ] T202 [REWORK] Document the first-admin seeding requirement in SETUP.md / quickstart.md (admin role ID must be present in the Configuration sheet before bootstrap; Discord assigns the role to the first admin user)
+- [ ] T203 [REWORK] Migrate any existing Configuration sheet test fixtures and sample sheets from old key names to new key names
+- [ ] T205 [REWORK] Rewrite src/utils/auth.py to expose `is_member(user)`, `is_host(user)`, `is_admin(user)` backed by the new Configuration keys; `is_host` must return True for admins as well; `is_member` must return True for hosts and admins (tiers are inclusive upward)
+- [ ] T206 [REWORK] Update every command's authorization check to call the new tier functions: `/schedule`, `/listdates`, `/help` require `is_member`; `/volunteer`, `/unvolunteer`, `/warnings` require `is_host`; `/sync`, `/reset` require `is_admin`
+- [ ] T207 [REWORK] Constrain `/listdates` so members can only query their own dates (reject `user` parameter when invoker is member-only)
+- [ ] T208 [REWORK] Make all member-invoked command responses ephemeral (set `ephemeral=True` on the Discord interaction response) for `/schedule`, `/listdates`, `/help`; host/admin invocations remain public
+- [ ] T209 [REWORK] Update WarningService urgent-warning ping to mention both host and admin roles (from `host_role_ids` + `admin_role_ids`) rather than a single organizer role
+- [ ] T210 [REWORK] Update all user-facing authorization error messages to name the required tier ("This command requires the host role" / "…requires the admin role")
+- [ ] T211 [REWORK] Update contract tests in tests/contract/ to assert the new tier model and ephemeral response behavior
+- [ ] T212 [REWORK] Remove any residual bot-side code paths that attempted to manage role membership (there should be none, but verify — role assignment is Discord-native only)
+
+---
+
+## Phase 13: Concurrency, Durability, and Cascade Semantics
+
+**Goal**: Implement the single-instance heartbeat lock, the in-process write serialization, the recurring-pattern cascade deletion, the buffered audit flush, and the `America/Los_Angeles` zoneinfo conversion.
+
+**Independent Test**: (a) Starting a second bot process while the first is alive fatal-exits within 2 seconds. (b) Two concurrent `/volunteer` calls on the same date within one process yield exactly one success and one "already assigned" error. (c) Running `/unvolunteer recurring` deletes all future Schedule rows pointing at the pattern while preserving past ones. (d) Killing the bot mid-run and restarting preserves all audit entries that were flushed more than 30 seconds before the crash.
+
+### Implementation Tasks
+
+- [ ] T213 [P13] Add a module-level `asyncio.Lock` in src/services/sheets_service.py (or a dedicated `write_lock.py`) and wrap every write path — `/volunteer`, `/unvolunteer`, recurring cascade, `/sync`, `/reset`, and audit buffer flush — so that only one write is in flight per process at a time.
+- [ ] T214 [P13] Implement the `BotInstance` heartbeat lock in src/services/sheets_service.py: three Configuration rows (`bot_instance_id`, `bot_instance_started_at`, `bot_instance_heartbeat_at`) OR a dedicated `BotInstance` sheet. Provide `acquire_instance_lock()`, `refresh_heartbeat()`, `verify_instance_lock()`, and `release_instance_lock()`.
+- [ ] T215 [P13] Implement the startup protocol in src/bot.py: read `BotInstance`, fatal-exit if `heartbeat_at` is within the last 60 seconds, otherwise write our own `instance_id` + timestamps, sleep 2 seconds, re-read, fatal-exit if `instance_id` no longer matches.
+- [ ] T216 [P13] Start a background task (discord.py `tasks.loop`) in src/bot.py that calls `refresh_heartbeat()` every 30 seconds while the bot is running; on shutdown, call `release_instance_lock()`.
+- [ ] T217 [P13] Before every write operation (all of `/volunteer`, `/unvolunteer`, cascade, `/sync`, `/reset`, audit flush), call `verify_instance_lock()`; if the stored `instance_id` no longer matches, refuse the write, log the lock-loss event, and return a user-visible error.
+- [ ] T218 [P13] Implement recurring pattern cascade deletion in src/commands/unvolunteer.py: when `/unvolunteer recurring` succeeds, after setting `is_active = FALSE`, delete (clear) all Schedule rows whose `recurring_pattern_id` matches the pattern AND whose `date` >= today. Past rows are retained untouched for audit.
+- [ ] T219 [P13] Implement a buffered audit writer in src/services/sheets_service.py (or a new `audit_buffer.py`): entries are enqueued in memory and flushed as a single batched `append` to AuditLog when (a) 30 seconds have elapsed since the last flush, (b) the buffer reaches 50 entries, or (c) the bot is shutting down (SIGTERM/SIGINT/graceful stop). Unflushed entries are lost on crash — this is an accepted tradeoff.
+- [ ] T220 [P13] Wire all audit-producing call sites (volunteer, unvolunteer, recurring create, recurring cascade, sync, reset, warning_posted) to push into the buffered writer instead of calling `append` directly.
+- [ ] T221 [P13] Remove `VIEW_SCHEDULE` (and any other read-action audit types) from the audit action enum in src/models/audit_entry.py and from any code that logs read actions. Reads are not audited.
+- [ ] T222 [P13] Replace any `"PST"` / `"PDT"` strings with `zoneinfo.ZoneInfo("America/Los_Angeles")` throughout src/ (date display, daily check scheduling, audit timestamps). The `daily_check_time` setting is now a HH:MM 24h string, and the zone is read from `daily_check_timezone` (default `America/Los_Angeles`).
+- [ ] T223 [P13] Update src/models/configuration.py defaults: `daily_check_time = "09:00"`, `daily_check_timezone = "America/Los_Angeles"`, `schedule_window_weeks = 4`.
 
 ---
 

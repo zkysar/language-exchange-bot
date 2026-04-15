@@ -318,11 +318,19 @@ service.spreadsheets().values().update(
 
 ---
 
-#### Append Audit Entry
+#### Append Audit Entries (Buffered / Batched)
 
 **Endpoint**: `spreadsheets.values.append`
 
-**Request**:
+**Behavior**: Audit entries are NOT appended one-at-a-time. They are enqueued in an in-memory buffer and flushed as a single `append` call containing one row per entry. A flush occurs when any of the following is true:
+
+1. 30 seconds have elapsed since the last flush and the buffer is non-empty
+2. The buffer contains 50 or more pending entries
+3. The bot is shutting down (SIGTERM / SIGINT / graceful stop)
+
+On crash (SIGKILL, OOM, hardware failure), any entries still in the buffer are lost. This is an accepted tradeoff for Google Sheets API quota efficiency (Principle I). `VIEW_SCHEDULE` and other read actions are **not** audited.
+
+**Request** (one flush, N entries):
 ```python
 service.spreadsheets().values().append(
     spreadsheetId=SPREADSHEET_ID,
@@ -330,17 +338,22 @@ service.spreadsheets().values().append(
     valueInputOption='USER_ENTERED',
     insertDataOption='INSERT_ROWS',
     body={
-        'values': [[entry_id, timestamp, action_type, user_discord_id, target_user_discord_id, event_date, recurring_pattern_id, outcome, error_message, metadata]]
+        'values': [
+            [entry_id_1, timestamp_1, action_type_1, ...],
+            [entry_id_2, timestamp_2, action_type_2, ...],
+            # up to 50 rows per flush
+        ]
     }
 ).execute()
 ```
 
-**Quota Impact**: 1 write request per call
-
-**Note**: Audit entries may be batched if multiple actions occur simultaneously
+**Quota Impact**: 1 write request per flush (not per entry). A single flush of 50 entries costs 1 write.
 
 **Contract Test Requirements**:
-- Verify audit entry format
+- Verify audit entries are buffered and not flushed on every call
+- Verify time-based flush (30s), size-based flush (50 entries), and shutdown flush
+- Verify a single `append` request carries multiple rows
+- Verify no read-action audit types are produced
 - Verify JSON metadata serialization
 
 ---
