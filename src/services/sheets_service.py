@@ -27,6 +27,30 @@ SCHEDULE_HEADERS = [
     "date", "host_discord_id", "host_username", "recurring_pattern_id",
     "assigned_at", "assigned_by", "notes",
 ]
+SCHEDULE_DISPLAY_HEADERS = ["Date", "Host ID", "Host", "", "", "", "Notes"]
+
+INSTRUCTIONS_CONTENT = [
+    "Language Exchange Bot - Schedule Sheet",
+    "",
+    "This spreadsheet is managed by the Discord bot. Here's what you need to know:",
+    "",
+    "SCHEDULE TAB (safe to edit):",
+    '- Date: Event dates in YYYY-MM-DD format',
+    '- Host: The Discord username of the person hosting',
+    '- Notes: Any notes about the event (optional)',
+    '- Blank host = unassigned date (the bot will send reminders)',
+    "",
+    "WHAT NOT TO DO:",
+    '- Don\'t edit the "Host ID" column \u2014 the bot fills this from Discord',
+    '- Don\'t rename or reorder columns',
+    '- Don\'t touch hidden sheets (RecurringPatterns, AuditLog, Configuration)',
+    '  unless you know what you\'re doing',
+    "",
+    "NEED HELP?",
+    '- Use /help in Discord for bot commands',
+    '- Use /schedule to see upcoming dates',
+    '- Use /volunteer to sign up for a date',
+]
 PATTERN_HEADERS = [
     "pattern_id", "host_discord_id", "host_username", "pattern_description",
     "pattern_rule", "start_date", "end_date", "created_at", "is_active",
@@ -95,6 +119,240 @@ class SheetsService:
         for key, value, type_, desc in DEFAULT_CONFIG_ROWS:
             if key not in existing_keys:
                 config_ws.append_row([key, value, type_, desc, datetime.now(timezone.utc).isoformat()])
+        try:
+            self.apply_sheet_ux()
+        except Exception:
+            log.warning("sheet UX setup failed (non-fatal)", exc_info=True)
+
+    # -- sheet UX --
+    def apply_sheet_ux(self) -> None:
+        schedule_ws = self.spreadsheet.worksheet("Schedule")
+        self._setup_instructions_tab()
+        self._setup_schedule_display_row(schedule_ws)
+        self._hide_internal_tabs()
+        self._protect_internal_tabs()
+        self._apply_schedule_formatting(schedule_ws)
+        log.info("sheet UX applied")
+
+    def _setup_instructions_tab(self) -> None:
+        try:
+            ws = self.spreadsheet.worksheet("Instructions")
+        except gspread.WorksheetNotFound:
+            ws = self.spreadsheet.add_worksheet(
+                title="Instructions", rows=25, cols=1,
+            )
+        ws.update(
+            f"A1:A{len(INSTRUCTIONS_CONTENT)}",
+            [[line] for line in INSTRUCTIONS_CONTENT],
+        )
+        ws.format("A1", {
+            "textFormat": {"bold": True, "fontSize": 14},
+        })
+        ws.format("A5", {"textFormat": {"bold": True}})
+        ws.format("A11", {"textFormat": {"bold": True}})
+        ws.format("A17", {"textFormat": {"bold": True}})
+        ws.freeze(rows=1)
+        self._protect_sheet_if_needed(ws, warning_only=False)
+        all_sheets = self.spreadsheet.worksheets()
+        self.spreadsheet.reorder_worksheets(
+            [ws] + [s for s in all_sheets if s.id != ws.id],
+        )
+
+    def _setup_schedule_display_row(self, ws: gspread.Worksheet) -> None:
+        val = ws.acell("A2").value
+        if val == "Date":
+            return
+        if val:
+            ws.insert_row(SCHEDULE_DISPLAY_HEADERS, index=2)
+        else:
+            ws.update("A2:G2", [SCHEDULE_DISPLAY_HEADERS])
+
+    def _hide_internal_tabs(self) -> None:
+        for name in ("RecurringPatterns", "AuditLog", "Configuration"):
+            try:
+                ws = self.spreadsheet.worksheet(name)
+                ws.hide()
+            except gspread.WorksheetNotFound:
+                pass
+
+    def _protect_sheet_if_needed(
+        self, ws: gspread.Worksheet, *, warning_only: bool = True,
+    ) -> None:
+        metadata = self.spreadsheet.fetch_sheet_metadata()
+        for sheet in metadata.get("sheets", []):
+            props = sheet.get("properties", {})
+            if props.get("sheetId") != ws.id:
+                continue
+            existing = sheet.get("protectedRanges", [])
+            if existing:
+                return
+        ws.add_protected_range(warning_only=warning_only)
+
+    def _protect_internal_tabs(self) -> None:
+        for name in ("RecurringPatterns", "AuditLog", "Configuration"):
+            try:
+                ws = self.spreadsheet.worksheet(name)
+                self._protect_sheet_if_needed(ws, warning_only=True)
+            except gspread.WorksheetNotFound:
+                pass
+
+    def _apply_schedule_formatting(self, ws: gspread.Worksheet) -> None:
+        sheet_id = ws.id
+        ws.freeze(rows=2, cols=1)
+        ws.format("A2:G2", {
+            "textFormat": {"bold": True},
+            "backgroundColor": {"red": 0.89, "green": 0.95, "blue": 0.99},
+        })
+        requests: list = [
+            {
+                "updateDimensionProperties": {
+                    "range": {
+                        "sheetId": sheet_id,
+                        "dimension": "ROWS",
+                        "startIndex": 0,
+                        "endIndex": 1,
+                    },
+                    "properties": {"pixelSize": 1},
+                    "fields": "pixelSize",
+                },
+            },
+            *self._column_width_requests(sheet_id, [(0, 120), (2, 150), (6, 200)]),
+            *self._hide_columns_requests(sheet_id, [(3, 6)]),
+        ]
+        requests.extend(self._conditional_format_requests(sheet_id))
+        requests.extend(self._date_validation_requests(sheet_id))
+        self.spreadsheet.batch_update({"requests": requests})
+
+    @staticmethod
+    def _column_width_requests(
+        sheet_id: int, cols: List[tuple],
+    ) -> List[dict]:
+        return [
+            {
+                "updateDimensionProperties": {
+                    "range": {
+                        "sheetId": sheet_id,
+                        "dimension": "COLUMNS",
+                        "startIndex": col,
+                        "endIndex": col + 1,
+                    },
+                    "properties": {"pixelSize": width},
+                    "fields": "pixelSize",
+                },
+            }
+            for col, width in cols
+        ]
+
+    @staticmethod
+    def _hide_columns_requests(
+        sheet_id: int, ranges: List[tuple],
+    ) -> List[dict]:
+        return [
+            {
+                "updateDimensionProperties": {
+                    "range": {
+                        "sheetId": sheet_id,
+                        "dimension": "COLUMNS",
+                        "startIndex": start,
+                        "endIndex": end,
+                    },
+                    "properties": {"hiddenByUser": True},
+                    "fields": "hiddenByUser",
+                },
+            }
+            for start, end in ranges
+        ]
+
+    def _conditional_format_requests(self, sheet_id: int) -> List[dict]:
+        clear_requests = self._clear_conditional_format_requests(sheet_id)
+        return clear_requests + [
+            {
+                "addConditionalFormatRule": {
+                    "rule": {
+                        "ranges": [{
+                            "sheetId": sheet_id,
+                            "startRowIndex": 2,
+                            "startColumnIndex": 0,
+                            "endColumnIndex": 7,
+                        }],
+                        "booleanRule": {
+                            "condition": {
+                                "type": "CUSTOM_FORMULA",
+                                "values": [{"userEnteredValue": '=AND(A3<>"", B3="")'}],
+                            },
+                            "format": {
+                                "backgroundColor": {
+                                    "red": 1.0, "green": 0.976, "blue": 0.769,
+                                },
+                            },
+                        },
+                    },
+                    "index": 0,
+                },
+            },
+            {
+                "addConditionalFormatRule": {
+                    "rule": {
+                        "ranges": [{
+                            "sheetId": sheet_id,
+                            "startRowIndex": 2,
+                            "startColumnIndex": 0,
+                            "endColumnIndex": 7,
+                        }],
+                        "booleanRule": {
+                            "condition": {
+                                "type": "CUSTOM_FORMULA",
+                                "values": [{"userEnteredValue": '=AND(A3<>"", A3<TODAY())'}],
+                            },
+                            "format": {
+                                "backgroundColor": {
+                                    "red": 0.96, "green": 0.96, "blue": 0.96,
+                                },
+                                "textFormat": {
+                                    "foregroundColor": {
+                                        "red": 0.6, "green": 0.6, "blue": 0.6,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    "index": 1,
+                },
+            },
+        ]
+
+    def _clear_conditional_format_requests(self, sheet_id: int) -> List[dict]:
+        metadata = self.spreadsheet.fetch_sheet_metadata()
+        for sheet in metadata.get("sheets", []):
+            if sheet.get("properties", {}).get("sheetId") != sheet_id:
+                continue
+            rules = sheet.get("conditionalFormats", [])
+            return [
+                {"deleteConditionalFormatRule": {"sheetId": sheet_id, "index": 0}}
+                for _ in rules
+            ]
+        return []
+
+    @staticmethod
+    def _date_validation_requests(sheet_id: int) -> List[dict]:
+        return [
+            {
+                "setDataValidation": {
+                    "range": {
+                        "sheetId": sheet_id,
+                        "startRowIndex": 2,
+                        "endRowIndex": 1000,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 1,
+                    },
+                    "rule": {
+                        "condition": {"type": "DATE_IS_VALID"},
+                        "strict": False,
+                        "showCustomUi": True,
+                    },
+                },
+            },
+        ]
 
     # -- configuration --
     def load_configuration(self) -> Configuration:
