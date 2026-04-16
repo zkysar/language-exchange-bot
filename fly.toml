@@ -1,0 +1,14 @@
+app = "discord-host-scheduler"
+primary_region = "sea"
+
+[build]
+
+[processes]
+  app = "python -m src.bot"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+[deploy]
+  strategy = "immediate"
