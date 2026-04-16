@@ -6,22 +6,10 @@ import discord
 from discord import app_commands
 
 from src.commands.sheet import sheet_url
+from src.services.cache_service import CacheService
+from src.utils.auth import is_admin, is_host, is_member, is_owner
 
-HELP_TEXT = {
-    None: (
-        "**Commands**\n"
-        "• `/schedule [weeks] [date]` — View upcoming host schedule\n"
-        "• `/listdates [user]` — Upcoming dates for a user\n"
-        "• `/warnings` — Check unassigned dates needing hosts\n"
-        "• `/volunteer date date:[date] [user]` — Sign up for an open date\n"
-        "• `/volunteer recurring pattern:[pattern] [user]` — Recurring pattern\n"
-        "• `/unvolunteer date date:[date] [user]` — Cancel a date\n"
-        "• `/unvolunteer recurring [user]` — Cancel recurring pattern\n"
-        "• `/sync` — (admin) Force sync with Google Sheets\n"
-        "• `/reset` — (admin) Reset database cache\n"
-        "• `/sheet` — Link to the backing Google Sheet\n"
-        "• `/help [command]` — This help"
-    ),
+COMMAND_DETAIL = {
     "volunteer": "Use `/volunteer date` to claim an open date from the autocomplete dropdown, "
                  "or `/volunteer recurring pattern:'every 2nd Tuesday'` to set up a pattern.",
     "unvolunteer": "Use `/unvolunteer date` to cancel a specific hosting commitment, or "
@@ -34,31 +22,89 @@ HELP_TEXT = {
                  "(hosts/admins only) to view another user.",
     "sync": "Admin-only. Forces a full resync of local cache from Google Sheets.",
     "reset": "Admin-only. Displays the reset procedure and requires confirmation.",
+    "setup": "Owner-only. Configure admin/host/member role mappings.",
     "sheet": "Shows the URL of the backing Google Sheet. You need to be "
              "granted view access to actually open it.",
 }
 
-
-_COMMAND_CHOICES = [
-    app_commands.Choice(name=key, value=key)
-    for key in HELP_TEXT
-    if key is not None
+TIERED_COMMANDS = [
+    (None, [
+        ("help", "• `/help [command]` — This help"),
+        ("sheet", "• `/sheet` — Link to the backing Google Sheet"),
+    ]),
+    (is_member, [
+        ("schedule", "• `/schedule [weeks] [date]` — View upcoming host schedule"),
+        ("listdates", "• `/listdates [user]` — Upcoming dates for a user"),
+        ("warnings", "• `/warnings` — Check unassigned dates needing hosts"),
+    ]),
+    (is_host, [
+        ("volunteer", "• `/volunteer date` / `/volunteer recurring` — Sign up to host"),
+        ("unvolunteer", "• `/unvolunteer date` / `/unvolunteer recurring` — Cancel hosting"),
+    ]),
+    (is_admin, [
+        ("sync", "• `/sync` — Force sync with Google Sheets"),
+        ("reset", "• `/reset` — Reset database cache"),
+    ]),
+    (is_owner, [
+        ("setup", "• `/setup` — Configure role mappings"),
+    ]),
 ]
 
 
-def build_command() -> app_commands.Command:
+def _visible_commands(user: discord.abc.User, config) -> tuple[list[str], list[str]]:
+    lines: list[str] = []
+    visible: list[str] = []
+    for check, entries in TIERED_COMMANDS:
+        if check is not None and not check(user, config):
+            continue
+        for name, line in entries:
+            lines.append(line)
+            visible.append(name)
+    return lines, visible
+
+
+def _roles_configured(config) -> bool:
+    return bool(config.member_role_ids or config.host_role_ids or config.admin_role_ids)
+
+
+def _build_overview(user: discord.abc.User, config) -> str:
+    lines, _ = _visible_commands(user, config)
+    text = "**Commands**\n" + "\n".join(lines)
+    if not _roles_configured(config):
+        text += (
+            "\n\n⚠️ **No roles are configured yet.** "
+            "An owner needs to run `/setup` to assign admin, host, "
+            "and member roles before most commands will work."
+        )
+    return text
+
+
+def build_command(cache: CacheService) -> app_commands.Command:
     @app_commands.command(name="help", description="Show command help")
     @app_commands.describe(command="Pick a command for details")
-    @app_commands.choices(command=_COMMAND_CHOICES)
     async def help_cmd(
         interaction: discord.Interaction,
-        command: Optional[app_commands.Choice[str]] = None,
+        command: Optional[str] = None,
     ) -> None:
-        key = command.value if command else None
-        text = HELP_TEXT.get(key)
-        if not text:
-            text = HELP_TEXT[None]
+        if command:
+            text = COMMAND_DETAIL.get(command)
+            if not text:
+                text = _build_overview(interaction.user, cache.config)
+        else:
+            text = _build_overview(interaction.user, cache.config)
         text = f"{text}\n\nSheet: {sheet_url()}"
         await interaction.response.send_message(text, ephemeral=True)
+
+    @help_cmd.autocomplete("command")
+    async def _command_autocomplete(
+        interaction: discord.Interaction,
+        current: str,
+    ) -> list[app_commands.Choice[str]]:
+        _, visible = _visible_commands(interaction.user, cache.config)
+        return [
+            app_commands.Choice(name=name, value=name)
+            for name in visible
+            if name != "help" and current.lower() in name.lower()
+        ][:25]
 
     return help_cmd
