@@ -34,9 +34,7 @@ COMMAND_HELP = {
                "`/hosting action:signup pattern:'every 2nd Tuesday'` to set up a recurring pattern, "
                "`/hosting action:cancel date:<date>` to cancel a date, or "
                "`/hosting action:cancel pattern:<pattern>` to cancel a recurring pattern.",
-    "sheet": "Shows the URL of the backing Google Sheet. You need to be "
-             "granted view access to actually open it.",
-    "config": "Owner-only. Use `/config show` to see all settings, `/config set <setting> <value>` "
+    "config":"Owner-only. Use `/config show` to see all settings, `/config set <setting> <value>` "
               "to change a setting, or `/config roles <action> <bucket> [role]` to manage roles.",
     "setup": "Owner-only. Guided wizard that walks through all essential bot configuration.",
     "sync": "Admin-only. Forces a full resync of local cache from Google Sheets.",
@@ -63,7 +61,6 @@ _HOST_CATEGORY = (
 
 _OTHER_CATEGORY = {
     "Other": [
-        ("/sheet", "Link to the Google Sheet"),
         ("/help [command]", "Detailed help for a command"),
     ],
 }
@@ -87,8 +84,7 @@ _OWNER_CATEGORY = (
 )
 
 _AUTOCOMPLETE_TIERS = [
-    (None, ["sheet"]),
-    (is_member, ["schedule"]),
+    (is_member, ["schedule", "warnings"]),
     (is_host, ["hosting"]),
     (is_admin, ["sync", "reset"]),
     (is_owner, ["config", "setup"]),
