@@ -23,6 +23,17 @@ log = get_logger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r", "\n")
+
+
+def _escape_cell(value: str) -> str:
+    """Prefix `'` to neutralize Sheets formula injection from user-influenced text."""
+    if not value:
+        return value
+    if value[0] in _FORMULA_PREFIXES:
+        return "'" + value
+    return value
+
 SCHEDULE_HEADERS = [
     "date", "host_discord_id", "host_username", "recurring_pattern_id",
     "assigned_at", "assigned_by", "notes",
@@ -433,12 +444,12 @@ class SheetsService:
         ws = self._get_or_create("Schedule", SCHEDULE_HEADERS)
         row_values = [
             format_date(event.date),
-            event.host_discord_id or "",
-            event.host_username or "",
-            event.recurring_pattern_id or "",
+            _escape_cell(event.host_discord_id or ""),
+            _escape_cell(event.host_username or ""),
+            _escape_cell(event.recurring_pattern_id or ""),
             event.assigned_at.isoformat() if event.assigned_at else "",
-            event.assigned_by or "",
-            event.notes or "",
+            _escape_cell(event.assigned_by or ""),
+            _escape_cell(event.notes or ""),
         ]
         target = format_date(event.date)
         row_idx = self._find_schedule_row(ws, target)
@@ -509,11 +520,11 @@ class SheetsService:
     def append_pattern(self, pattern: RecurringPattern) -> None:
         ws = self._get_or_create("RecurringPatterns", PATTERN_HEADERS)
         ws.append_row([
-            pattern.pattern_id,
-            pattern.host_discord_id,
-            pattern.host_username,
-            pattern.pattern_description,
-            pattern.pattern_rule,
+            _escape_cell(pattern.pattern_id),
+            _escape_cell(pattern.host_discord_id),
+            _escape_cell(pattern.host_username),
+            _escape_cell(pattern.pattern_description),
+            _escape_cell(pattern.pattern_rule),
             format_date(pattern.start_date),
             format_date(pattern.end_date) if pattern.end_date else "",
             (pattern.created_at or datetime.now(timezone.utc)).isoformat(),
@@ -533,15 +544,15 @@ class SheetsService:
     def append_audit(self, entry: AuditEntry) -> None:
         ws = self._get_or_create("AuditLog", AUDIT_HEADERS)
         ws.append_row([
-            entry.entry_id,
+            _escape_cell(entry.entry_id),
             entry.timestamp.isoformat(),
-            entry.action_type,
-            entry.user_discord_id,
-            entry.target_user_discord_id or "",
+            _escape_cell(entry.action_type),
+            _escape_cell(entry.user_discord_id),
+            _escape_cell(entry.target_user_discord_id or ""),
             format_date(entry.event_date) if entry.event_date else "",
-            entry.recurring_pattern_id or "",
-            entry.outcome,
-            entry.error_message or "",
+            _escape_cell(entry.recurring_pattern_id or ""),
+            _escape_cell(entry.outcome),
+            _escape_cell(entry.error_message or ""),
             json.dumps(entry.metadata) if entry.metadata else "",
         ])
 

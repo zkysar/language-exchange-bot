@@ -40,15 +40,29 @@ def cache() -> MagicMock:
 # ── /config show ─────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_config_show_non_owner_rejected(sheets: MagicMock, cache: MagicMock) -> None:
+async def test_group_interaction_check_rejects_non_owner(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
     group = build_group(sheets, cache)
-    show = group.get_command("show")
     interaction = make_interaction()
     with patch("src.commands.config_cmd.is_owner", return_value=False):
-        await show.callback(interaction)
+        result = await group.interaction_check(interaction)
+    assert result is False
     interaction.response.send_message.assert_awaited_once()
     _, kwargs = interaction.response.send_message.call_args
     assert kwargs.get("ephemeral") is True
+
+
+@pytest.mark.asyncio
+async def test_group_interaction_check_allows_owner(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
+    group = build_group(sheets, cache)
+    interaction = make_interaction()
+    with patch("src.commands.config_cmd.is_owner", return_value=True):
+        result = await group.interaction_check(interaction)
+    assert result is True
+    interaction.response.send_message.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -111,19 +125,6 @@ async def test_config_show_empty_roles_display_none(sheets: MagicMock, cache: Ma
 
 
 # ── /config set ───────────────────────────────────────────────────────────────
-
-@pytest.mark.asyncio
-async def test_config_set_non_owner_rejected(sheets: MagicMock, cache: MagicMock) -> None:
-    group = build_group(sheets, cache)
-    set_cmd = group.get_command("set")
-    interaction = make_interaction()
-    setting = app_commands.Choice(name="Passive warning days", value="warning_passive_days")
-    with patch("src.commands.config_cmd.is_owner", return_value=False):
-        await set_cmd.callback(interaction, setting=setting, value="5")
-    interaction.response.send_message.assert_awaited_once()
-    _, kwargs = interaction.response.send_message.call_args
-    assert kwargs.get("ephemeral") is True
-
 
 @pytest.mark.asyncio
 async def test_config_set_valid_integer_writes_and_refreshes(
@@ -261,20 +262,6 @@ async def test_value_autocomplete_non_timezone_returns_empty(
 
 
 # ── /config roles ─────────────────────────────────────────────────────────────
-
-@pytest.mark.asyncio
-async def test_roles_non_owner_rejected(sheets: MagicMock, cache: MagicMock) -> None:
-    group = build_group(sheets, cache)
-    roles_cmd = group.get_command("roles")
-    interaction = make_interaction()
-    action = app_commands.Choice(name="add", value="add")
-    bucket = app_commands.Choice(name="admin", value="admin")
-    with patch("src.commands.config_cmd.is_owner", return_value=False):
-        await roles_cmd.callback(interaction, action=action, bucket=bucket, role=None)
-    interaction.response.send_message.assert_awaited_once()
-    _, kwargs = interaction.response.send_message.call_args
-    assert kwargs.get("ephemeral") is True
-
 
 @pytest.mark.asyncio
 async def test_roles_add_requires_role_parameter(sheets: MagicMock, cache: MagicMock) -> None:
