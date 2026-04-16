@@ -65,21 +65,13 @@ SETTINGS: dict[str, SettingMeta] = {
         sheets_type="string",
         description="IANA timezone for the daily check (e.g. America/Los_Angeles)",
     ),
-    "schedule_channel_id": SettingMeta(
+    "announcement_channel_id": SettingMeta(
         group="channels",
-        label="Schedule channel",
+        label="Announcement channel",
         setting_type="channel",
-        config_key="schedule_channel_id",
+        config_key="announcement_channel_id",
         sheets_type="string",
-        description="Channel where schedule posts are sent",
-    ),
-    "warnings_channel_id": SettingMeta(
-        group="channels",
-        label="Warnings channel",
-        setting_type="channel",
-        config_key="warnings_channel_id",
-        sheets_type="string",
-        description="Channel where warning posts are sent",
+        description="Channel where the bot posts schedule announcements and host-needed warnings",
     ),
 }
 

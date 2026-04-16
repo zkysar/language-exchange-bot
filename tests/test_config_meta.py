@@ -64,3 +64,14 @@ def test_configuration_has_single_announcement_channel_field():
     assert cfg.announcement_channel_id is None
     assert not hasattr(cfg, "schedule_channel_id")
     assert not hasattr(cfg, "warnings_channel_id")
+
+
+def test_config_meta_has_single_announcement_channel_entry():
+    assert "announcement_channel_id" in SETTINGS
+    assert "schedule_channel_id" not in SETTINGS
+    assert "warnings_channel_id" not in SETTINGS
+    meta = SETTINGS["announcement_channel_id"]
+    assert meta.group == "channels"
+    assert meta.setting_type == "channel"
+    assert meta.config_key == "announcement_channel_id"
+    assert meta.sheets_type == "string"
