@@ -77,6 +77,11 @@ class SetupWizardView(ui.View):
         embed.add_field(name="Passive warning days", value=str(cfg.warning_passive_days), inline=True)
         embed.add_field(name="Urgent warning days", value=str(cfg.warning_urgent_days), inline=True)
         embed.add_field(name="Schedule window", value=f"{cfg.schedule_window_weeks} weeks", inline=True)
+        embed.add_field(
+            name="Meeting pattern",
+            value=cfg.meeting_pattern or "*not set — all dates shown*",
+            inline=True,
+        )
         return embed
 
     def _build_summary_embed(self) -> discord.Embed:
@@ -110,7 +115,8 @@ class SetupWizardView(ui.View):
                 f"Check time: {cfg.daily_check_time} ({cfg.daily_check_timezone})\n"
                 f"Passive warning: {cfg.warning_passive_days} days\n"
                 f"Urgent warning: {cfg.warning_urgent_days} days\n"
-                f"Window: {cfg.schedule_window_weeks} weeks"
+                f"Window: {cfg.schedule_window_weeks} weeks\n"
+                f"Meeting pattern: {cfg.meeting_pattern or '*not set*'}"
             ),
             inline=False,
         )
@@ -134,6 +140,7 @@ class SetupWizardView(ui.View):
 
         elif self.step == 2:
             embed = self._build_schedule_embed()
+            self.add_item(_MeetingPatternButton(self))
             self.add_item(_CustomizeButton(self))
             self.add_item(_NextButton(self, label="Use defaults & finish"))
 
@@ -283,6 +290,40 @@ class _CustomizeButton(ui.Button):
 
     async def callback(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_modal(_ScheduleModal(self.wizard))
+
+
+class _MeetingPatternModal(ui.Modal, title="Set Meeting Pattern"):
+    pattern = ui.TextInput(
+        label="Meeting pattern",
+        placeholder="e.g. every wednesday, every 2nd tuesday",
+        max_length=80,
+        required=False,
+    )
+
+    def __init__(self, wizard: SetupWizardView) -> None:
+        super().__init__()
+        self.wizard = wizard
+        cfg = wizard.cache.config
+        self.pattern.default = cfg.meeting_pattern or ""
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        value = self.pattern.value.strip()
+        ok, val, err = validate_setting("meeting_pattern", value)
+        if not ok:
+            await interaction.response.send_message(err, ephemeral=True)
+            return
+        self.wizard.sheets.update_configuration("meeting_pattern", val, type_="string")
+        await self.wizard.cache.refresh(force=True)
+        await self.wizard._show_step(interaction)
+
+
+class _MeetingPatternButton(ui.Button):
+    def __init__(self, wizard: SetupWizardView) -> None:
+        super().__init__(style=discord.ButtonStyle.secondary, label="Set meeting pattern")
+        self.wizard = wizard
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_modal(_MeetingPatternModal(self.wizard))
 
 
 def build_command(sheets: SheetsService, cache: CacheService) -> app_commands.Command:
