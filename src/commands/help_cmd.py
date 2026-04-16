@@ -42,19 +42,29 @@ COMMAND_HELP = {
 
 HELP_TEXT = {None: "", **COMMAND_HELP}
 
+_MEMBER_INTRO = (
+    "Check who's hosting upcoming sessions and when open dates are available."
+)
+
 _MEMBER_CATEGORIES = {
-    "View Schedule": [
+    "Members — View Schedule": [
         ("/schedule [weeks] [date] [user]", "See upcoming hosts"),
     ],
 }
 
+_HOST_INTRO = (
+    "Sign up when you're willing to run a session. Claim a one-off date or set a "
+    "recurring pattern (e.g. \"every 2nd Tuesday\") so the schedule fills itself. "
+    "Cancel anytime if plans change — open dates show up for others to claim."
+)
+
 _HOST_CATEGORY = (
-    "Hosting",
+    "Hosts — Sign Up & Cancel",
     [
-        ("/hosting action:signup date:<date>", "Sign up for an open date"),
+        ("/hosting action:signup date:<date>", "Claim a specific date"),
         ("/hosting action:signup pattern:<pattern>", "Set a recurring pattern"),
-        ("/hosting action:cancel date:<date>", "Cancel a specific date"),
-        ("/hosting action:cancel pattern:<pattern>", "Cancel a recurring pattern"),
+        ("/hosting action:cancel date:<date>", "Drop a specific date"),
+        ("/hosting action:cancel pattern:<pattern>", "Remove a recurring pattern"),
     ],
 )
 
@@ -64,17 +74,27 @@ _OTHER_CATEGORY = {
     ],
 }
 
+_ADMIN_INTRO = (
+    "You can force a full refresh if the bot's schedule looks stale. "
+    "Otherwise the cache updates automatically."
+)
+
 _ADMIN_CATEGORY = (
-    "Admin",
+    "Admins — Maintenance",
     [
         ("/sync", "Force sync with Google Sheets"),
     ],
 )
 
+_OWNER_INTRO = (
+    "Configure which Discord roles map to hosts and admins, "
+    "and tweak scheduling defaults. Run `/setup` first on a fresh install."
+)
+
 _OWNER_CATEGORY = (
-    "Owner",
+    "Owners — Configuration",
     [
-        ("/config show", "View all configuration"),
+        ("/config show", "View all settings"),
         ("/config set", "Change a setting"),
         ("/config roles", "Manage role buckets"),
         ("/setup", "Guided setup wizard"),
@@ -110,19 +130,19 @@ def _build_embed(user: discord.abc.User, config) -> discord.Embed:
     )
 
     for heading, cmds in _MEMBER_CATEGORIES.items():
-        lines = "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
+        lines = f"*{_MEMBER_INTRO}*\n" + "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
         embed.add_field(name=heading, value=lines, inline=False)
     if is_host(user, config):
         heading, cmds = _HOST_CATEGORY
-        lines = "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
+        lines = f"*{_HOST_INTRO}*\n" + "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
         embed.add_field(name=heading, value=lines, inline=False)
     if is_admin(user, config):
         heading, cmds = _ADMIN_CATEGORY
-        lines = "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
+        lines = f"*{_ADMIN_INTRO}*\n" + "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
         embed.add_field(name=heading, value=lines, inline=False)
     if is_owner(user, config):
         heading, cmds = _OWNER_CATEGORY
-        lines = "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
+        lines = f"*{_OWNER_INTRO}*\n" + "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
         embed.add_field(name=heading, value=lines, inline=False)
     if not _roles_configured(config):
         embed.add_field(

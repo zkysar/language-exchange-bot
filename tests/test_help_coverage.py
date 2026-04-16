@@ -99,4 +99,4 @@ def test_no_warning_when_configured() -> None:
     embed = help_mod._build_embed(user, config)
     field_names = [f.name for f in embed.fields]
     assert "Not configured" not in field_names
-    assert "View Schedule" in field_names
+    assert "Members — View Schedule" in field_names
