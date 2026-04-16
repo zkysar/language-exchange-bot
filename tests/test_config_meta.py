@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import pytest
-from src.utils.config_meta import SETTINGS, validate_setting, SettingMeta
+from src.utils.config_meta import SETTINGS, SettingMeta, validate_setting
 from src.models.models import Configuration
 
 
