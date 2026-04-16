@@ -5,6 +5,8 @@ from typing import Optional
 import discord
 from discord import app_commands
 
+from src.commands.sheet import sheet_url
+
 HELP_TEXT = {
     None: (
         "**Commands**\n"
@@ -17,6 +19,7 @@ HELP_TEXT = {
         "• `/unvolunteer recurring [user]` — Cancel recurring pattern\n"
         "• `/sync` — (admin) Force sync with Google Sheets\n"
         "• `/reset` — (admin) Reset database cache\n"
+        "• `/sheet` — Link to the backing Google Sheet\n"
         "• `/help [command]` — This help"
     ),
     "volunteer": "Use `/volunteer date` to claim an open date from the autocomplete dropdown, "
@@ -31,6 +34,8 @@ HELP_TEXT = {
                  "(hosts/admins only) to view another user.",
     "sync": "Admin-only. Forces a full resync of local cache from Google Sheets.",
     "reset": "Admin-only. Displays the reset procedure and requires confirmation.",
+    "sheet": "Shows the URL of the backing Google Sheet. You need to be "
+             "granted view access to actually open it.",
 }
 
 
@@ -53,6 +58,7 @@ def build_command() -> app_commands.Command:
         text = HELP_TEXT.get(key)
         if not text:
             text = HELP_TEXT[None]
+        text = f"{text}\n\nSheet: {sheet_url()}"
         await interaction.response.send_message(text, ephemeral=True)
 
     return help_cmd
