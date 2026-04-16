@@ -15,7 +15,7 @@ def build_command() -> app_commands.Command:
     @app_commands.command(name="sheet", description="Link to the backing Google Sheet")
     async def sheet_cmd(interaction: discord.Interaction) -> None:
         await interaction.response.send_message(
-            f"Backing sheet: {sheet_url()}", ephemeral=True
+            f"[Backing sheet]({sheet_url()})", ephemeral=True
         )
 
     return sheet_cmd

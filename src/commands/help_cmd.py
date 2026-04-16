@@ -111,7 +111,7 @@ def _visible_autocomplete(user: discord.abc.User, config) -> list[str]:
 def _build_embed(user: discord.abc.User, config) -> discord.Embed:
     embed = discord.Embed(
         title="Host Scheduler",
-        description=BOT_DESCRIPTION,
+        description=f"{BOT_DESCRIPTION}\n\n[Sheet]({sheet_url()}) • [GitHub]({GITHUB_URL})",
         color=0x5865F2,
     )
 
@@ -147,7 +147,7 @@ def _build_embed(user: discord.abc.User, config) -> discord.Embed:
         lines = "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
         embed.add_field(name=heading, value=lines, inline=False)
 
-    embed.set_footer(text=f"{_read_version()} · Sheet: {sheet_url()} • GitHub: {GITHUB_URL}")
+    embed.set_footer(text=_read_version())
     return embed
 
 
@@ -161,7 +161,7 @@ def build_command(cache: CacheService) -> app_commands.Command:
         if command:
             text = COMMAND_HELP.get(command)
             if text:
-                text = f"{text}\n\nSheet: {sheet_url()} • GitHub: {GITHUB_URL}"
+                text = f"{text}\n\n[Sheet]({sheet_url()}) • [GitHub]({GITHUB_URL})"
                 await interaction.response.send_message(text, ephemeral=True)
                 return
 
