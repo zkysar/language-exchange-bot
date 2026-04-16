@@ -10,7 +10,7 @@ def test_all_settings_have_required_fields():
         assert meta.group in ("warnings", "schedule", "channels", "roles")
         assert meta.label
         assert meta.config_key
-        assert meta.setting_type in ("integer", "time", "timezone", "channel")
+        assert meta.setting_type in ("integer", "time", "timezone", "channel", "pattern")
 
 
 def test_validate_integer_in_range():
@@ -55,6 +55,37 @@ def test_validate_timezone_invalid():
 def test_validate_unknown_key():
     ok, val, err = validate_setting("nonexistent_key", "foo")
     assert ok is False
+
+
+def test_meeting_pattern_in_settings():
+    assert "meeting_pattern" in SETTINGS
+    meta = SETTINGS["meeting_pattern"]
+    assert meta.group == "schedule"
+    assert meta.setting_type == "pattern"
+
+
+def test_validate_meeting_pattern_valid():
+    ok, val, err = validate_setting("meeting_pattern", "every wednesday")
+    assert ok is True
+    assert val == "every wednesday"
+    assert err is None
+
+
+def test_validate_meeting_pattern_valid_nth():
+    ok, val, err = validate_setting("meeting_pattern", "every 2nd tuesday")
+    assert ok is True
+
+
+def test_validate_meeting_pattern_invalid():
+    ok, val, err = validate_setting("meeting_pattern", "not a real pattern")
+    assert ok is False
+    assert err is not None
+
+
+def test_validate_meeting_pattern_empty_clears():
+    ok, val, err = validate_setting("meeting_pattern", "")
+    assert ok is True
+    assert val == ""
 
 
 def test_configuration_has_single_announcement_channel_field():

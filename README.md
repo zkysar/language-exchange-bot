@@ -17,6 +17,10 @@ AuditLog, Configuration) with default configuration. Edit the Configuration shee
 to set `member_role_ids`, `host_role_ids`, `admin_role_ids` (JSON arrays of
 Discord role IDs), and `announcement_channel_id`.
 
+Set `meeting_pattern` (e.g. `every wednesday`, `every 2nd tuesday`) to restrict the
+`/hosting signup` date autocomplete to only the days your exchange actually meets.
+Leave it blank to allow any date. Configurable via `/setup` Step 3 or `/config`.
+
 ## Commands
 
 - `/schedule [weeks] [date] [user]` — upcoming schedule; filter by date or user

@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from typing import Optional, Tuple
 from zoneinfo import available_timezones
 
+from src.utils.pattern_parser import parse_pattern
+
 
 @dataclass(frozen=True)
 class SettingMeta:
@@ -73,6 +75,14 @@ SETTINGS: dict[str, SettingMeta] = {
         sheets_type="string",
         description="Channel where the bot posts schedule announcements and host-needed warnings",
     ),
+    "meeting_pattern": SettingMeta(
+        group="schedule",
+        label="Meeting pattern",
+        setting_type="pattern",
+        config_key="meeting_pattern",
+        sheets_type="string",
+        description="Recurrence pattern for when the exchange meets (e.g. 'every wednesday', 'every 2nd tuesday'). Leave blank to allow any date.",
+    ),
 }
 
 _TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -106,6 +116,15 @@ def validate_setting(key: str, value: str) -> Tuple[bool, Optional[str], Optiona
         return True, value, None
 
     if meta.setting_type == "channel":
+        return True, value, None
+
+    if meta.setting_type == "pattern":
+        if value == "":
+            return True, "", None
+        try:
+            parse_pattern(value)
+        except ValueError as e:
+            return False, None, f"`{meta.label}`: {e}"
         return True, value, None
 
     return False, None, f"Unknown type for `{key}`."

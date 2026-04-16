@@ -8,7 +8,7 @@ import discord
 import pytest
 from discord import app_commands
 
-from src.commands.hosting import _ConfirmView, build_command
+from src.commands.hosting import _ConfirmView, _signup_date_autocomplete, build_command
 from src.models.models import Configuration, EventDate, RecurringPattern
 from src.services.warning_service import WarningItem
 
@@ -524,3 +524,41 @@ async def test_pattern_autocomplete_cancel_returns_active_patterns(
     assert len(results) == 1
     assert results[0].value == "p-123"
     assert results[0].name == "every monday"
+
+
+# ── signup date autocomplete with meeting_pattern ─────────────────────────────
+
+def _make_cache_for_autocomplete(meeting_pattern=None):
+    cache = MagicMock()
+    cache.config = Configuration.default()
+    cache.config.meeting_pattern = meeting_pattern
+    cache.refresh = AsyncMock()
+    cache.all_events = MagicMock(return_value=[])
+    return cache
+
+
+@pytest.mark.asyncio
+async def test_autocomplete_no_pattern_returns_all_days():
+    cache = _make_cache_for_autocomplete(meeting_pattern=None)
+    interaction = MagicMock(spec=discord.Interaction)
+    choices = await _signup_date_autocomplete(interaction, "", cache)
+    assert len(choices) == 25  # hits the cap
+
+
+@pytest.mark.asyncio
+async def test_autocomplete_with_wednesday_pattern_returns_only_wednesdays():
+    cache = _make_cache_for_autocomplete(meeting_pattern="every wednesday")
+    interaction = MagicMock(spec=discord.Interaction)
+    choices = await _signup_date_autocomplete(interaction, "", cache)
+    assert len(choices) > 0
+    for choice in choices:
+        d = date.fromisoformat(choice.value)
+        assert d.weekday() == 2, f"{d} is not a Wednesday"
+
+
+@pytest.mark.asyncio
+async def test_autocomplete_with_invalid_pattern_falls_back_to_all_days():
+    cache = _make_cache_for_autocomplete(meeting_pattern="not parseable garbage")
+    interaction = MagicMock(spec=discord.Interaction)
+    choices = await _signup_date_autocomplete(interaction, "", cache)
+    assert len(choices) == 25  # graceful fallback

@@ -138,9 +138,20 @@ async def _signup_date_autocomplete(
     today = today_la()
     horizon = today + timedelta(weeks=12)
     events = {e.date: e for e in cache.all_events()}
+
+    meeting_dates = None
+    if cache.config.meeting_pattern:
+        try:
+            parsed = parse_pattern(cache.config.meeting_pattern)
+            meeting_dates = set(generate_dates(parsed, today, months=3))
+        except ValueError:
+            pass  # malformed config — fall back to all dates
+
     choices: List[app_commands.Choice[str]] = []
     for i in range((horizon - today).days + 1):
         d = today + timedelta(days=i)
+        if meeting_dates is not None and d not in meeting_dates:
+            continue
         ev = events.get(d)
         if ev and ev.is_assigned:
             continue

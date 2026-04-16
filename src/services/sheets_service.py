@@ -382,7 +382,7 @@ class SheetsService:
                 elif key in ("member_role_ids", "host_role_ids", "admin_role_ids", "owner_user_ids"):
                     parsed = json.loads(val) if val else []
                     setattr(config, key, [int(x) for x in parsed] if parsed else [])
-                elif key in ("daily_check_time", "daily_check_timezone"):
+                elif key in ("daily_check_time", "daily_check_timezone", "meeting_pattern"):
                     if val:
                         setattr(config, key, val)
                 elif key == "announcement_channel_id":
