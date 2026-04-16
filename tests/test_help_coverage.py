@@ -8,13 +8,12 @@ from discord import app_commands
 
 from src.commands import config_cmd as config_mod
 from src.commands import help_cmd as help_mod
+from src.commands import hosting as hosting_mod
 from src.commands import reset as reset_mod
 from src.commands import schedule as schedule_mod
 from src.commands import setup_wizard as setup_wizard_mod
 from src.commands import sheet as sheet_mod
 from src.commands import sync as sync_mod
-from src.commands import unvolunteer as unvolunteer_mod
-from src.commands import volunteer as volunteer_mod
 from src.commands import warnings_cmd as warnings_mod
 
 _UNDOCUMENTED_COMMANDS = {"help"}
@@ -28,8 +27,7 @@ def _build_tree() -> app_commands.CommandTree:
     client = MagicMock()
     client._connection._command_tree = None
     tree = app_commands.CommandTree(client)
-    tree.add_command(volunteer_mod.build_group(sheets, cache))
-    tree.add_command(unvolunteer_mod.build_group(sheets, cache, warnings))
+    tree.add_command(hosting_mod.build_command(sheets, cache, warnings))
     tree.add_command(schedule_mod.build_command(cache))
     tree.add_command(warnings_mod.build_command(cache, warnings))
     tree.add_command(sync_mod.build_command(sheets, cache))
@@ -78,19 +76,19 @@ def test_autocomplete_filters_by_role() -> None:
     member = _mock_user([1])
     visible = help_mod._visible_autocomplete(member, config)
     assert "schedule" in visible
-    assert "volunteer" not in visible
+    assert "hosting" not in visible
     assert "sync" not in visible
 
     host = _mock_user([2])
     visible = help_mod._visible_autocomplete(host, config)
     assert "schedule" in visible
-    assert "volunteer" in visible
+    assert "hosting" in visible
     assert "sync" not in visible
 
     admin = _mock_user([3])
     visible = help_mod._visible_autocomplete(admin, config)
     assert "schedule" in visible
-    assert "volunteer" in visible
+    assert "hosting" in visible
     assert "sync" in visible
 
     nobody = _mock_user([])

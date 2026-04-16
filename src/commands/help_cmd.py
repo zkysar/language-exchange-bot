@@ -30,10 +30,10 @@ COMMAND_HELP = {
                 "to a specific user's dates (hosts/admins can view others).",
     "warnings": "Use `/warnings` to see any unassigned dates within the warning window. "
                 "Response is always private.",
-    "volunteer": "Use `/volunteer date` to claim an open date from the autocomplete dropdown, "
-                 "or `/volunteer recurring pattern:'every 2nd Tuesday'` to set up a pattern.",
-    "unvolunteer": "Use `/unvolunteer date` to cancel a specific hosting commitment, or "
-                   "`/unvolunteer recurring` to cancel a recurring pattern (clears future dates).",
+    "hosting": "Use `/hosting action:signup date:<date>` to claim an open date, "
+               "`/hosting action:signup pattern:'every 2nd Tuesday'` to set up a recurring pattern, "
+               "`/hosting action:cancel date:<date>` to cancel a date, or "
+               "`/hosting action:cancel pattern:<pattern>` to cancel a recurring pattern.",
     "sheet": "Shows the URL of the backing Google Sheet. You need to be "
              "granted view access to actually open it.",
     "config": "Owner-only. Use `/config show` to see all settings, `/config set <setting> <value>` "
@@ -53,12 +53,12 @@ _MEMBER_CATEGORIES = {
 }
 
 _HOST_CATEGORY = (
-    "Volunteer",
+    "Hosting",
     [
-        ("/volunteer date", "Sign up for an open date"),
-        ("/volunteer recurring", "Set a recurring pattern"),
-        ("/unvolunteer date", "Cancel a specific date"),
-        ("/unvolunteer recurring", "Cancel your recurring pattern"),
+        ("/hosting action:signup date:<date>", "Sign up for an open date"),
+        ("/hosting action:signup pattern:<pattern>", "Set a recurring pattern"),
+        ("/hosting action:cancel date:<date>", "Cancel a specific date"),
+        ("/hosting action:cancel pattern:<pattern>", "Cancel a recurring pattern"),
     ],
 )
 
@@ -90,7 +90,7 @@ _OWNER_CATEGORY = (
 _AUTOCOMPLETE_TIERS = [
     (None, ["sheet"]),
     (is_member, ["schedule", "warnings"]),
-    (is_host, ["volunteer", "unvolunteer"]),
+    (is_host, ["hosting"]),
     (is_admin, ["sync", "reset"]),
     (is_owner, ["config", "setup"]),
 ]
