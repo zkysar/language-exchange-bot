@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.models.models import Configuration
 from src.commands.setup_wizard import build_command
+from src.models.models import Configuration
 
 
 @pytest.fixture
