@@ -27,8 +27,8 @@ COMMAND_HELP = {
                    "`/unvolunteer recurring` to cancel a recurring pattern (clears future dates).",
     "sheet": "Shows the URL of the backing Google Sheet. You need to be "
              "granted view access to actually open it.",
-    "config": "Owner-only. Use `/config show` to see all settings, or `/config warnings`, "
-              "`/config schedule`, `/config channels`, `/config roles` to change values.",
+    "config": "Owner-only. Use `/config show` to see all settings, `/config set <setting> <value>` "
+              "to change a setting, or `/config roles <action> <bucket> [role]` to manage roles.",
     "setup": "Owner-only. Guided wizard that walks through all essential bot configuration.",
     "sync": "Admin-only. Forces a full resync of local cache from Google Sheets.",
     "reset": "Admin-only. Displays the reset procedure and requires confirmation.",
@@ -65,7 +65,8 @@ _OWNER_CATEGORY = (
     "Owner",
     [
         ("/config show", "View all configuration"),
-        ("/config <group> <setting>", "Change a setting"),
+        ("/config set", "Change a setting"),
+        ("/config roles", "Manage role buckets"),
         ("/setup", "Guided setup wizard"),
     ],
 )
