@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import discord
 import pytest
@@ -15,35 +15,7 @@ from src.commands.setup_wizard import (
     _ScheduleModal,
     build_command,
 )
-from src.models.models import Configuration
-
-
-def make_interaction(user_id: int = 1, guild: bool = True) -> MagicMock:
-    interaction = MagicMock(spec=discord.Interaction)
-    interaction.user = MagicMock(spec=discord.Member)
-    interaction.user.id = user_id
-    interaction.guild = MagicMock() if guild else None
-    interaction.response = MagicMock()
-    interaction.response.send_message = AsyncMock()
-    interaction.response.edit_message = AsyncMock()
-    interaction.response.send_modal = AsyncMock()
-    interaction.followup = MagicMock()
-    interaction.followup.send = AsyncMock()
-    return interaction
-
-
-@pytest.fixture
-def sheets() -> MagicMock:
-    return MagicMock()
-
-
-@pytest.fixture
-def cache() -> MagicMock:
-    c = MagicMock()
-    c.config = Configuration.default()
-    c.refresh = AsyncMock()
-    return c
-
+from tests.helpers import make_interaction
 
 # ── build_command ─────────────────────────────────────────────────────────────
 

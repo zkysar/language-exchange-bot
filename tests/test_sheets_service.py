@@ -8,7 +8,14 @@ from unittest.mock import MagicMock, patch
 import gspread
 
 from src.models.models import AuditEntry, EventDate, RecurringPattern
-from src.services.sheets_service import SheetsService, _escape_cell
+from src.services.sheets_service import (
+    AUDIT_HEADERS,
+    CONFIG_HEADERS,
+    PATTERN_HEADERS,
+    SCHEDULE_HEADERS,
+    SheetsService,
+    _escape_cell,
+)
 
 
 def _make_svc() -> SheetsService:
@@ -672,4 +679,33 @@ def test_append_audit_escapes_malicious_error_message() -> None:
     svc.append_audit(entry)
     row = ws.append_row.call_args[0][0]
     assert row[8].startswith("'=")
+
+
+# ── schema contract ───────────────────────────────────────────────────────────
+
+def test_schedule_headers_match_eventdate_fields() -> None:
+    """SCHEDULE_HEADERS must stay in sync with what load_schedule / write_event read/write."""
+    assert SCHEDULE_HEADERS == [
+        "date", "host_discord_id", "host_username", "recurring_pattern_id",
+        "assigned_at", "assigned_by", "notes",
+    ]
+
+
+def test_pattern_headers_match_recurringpattern_fields() -> None:
+    assert PATTERN_HEADERS == [
+        "pattern_id", "host_discord_id", "host_username", "pattern_description",
+        "pattern_rule", "start_date", "end_date", "created_at", "is_active",
+    ]
+
+
+def test_audit_headers_match_auditentry_fields() -> None:
+    assert AUDIT_HEADERS == [
+        "entry_id", "timestamp", "action_type", "user_discord_id",
+        "target_user_discord_id", "event_date", "recurring_pattern_id",
+        "outcome", "error_message", "metadata",
+    ]
+
+
+def test_config_headers_stable() -> None:
+    assert CONFIG_HEADERS == ["setting_key", "setting_value", "setting_type", "description", "updated_at"]
 

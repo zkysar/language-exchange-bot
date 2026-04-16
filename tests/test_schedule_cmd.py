@@ -1,33 +1,14 @@
 from __future__ import annotations
 
 from datetime import date
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import discord
 import pytest
 
 from src.commands.schedule import build_command
-from src.models.models import Configuration, EventDate
-
-
-def make_interaction(user_id: int = 1) -> MagicMock:
-    interaction = MagicMock(spec=discord.Interaction)
-    interaction.user = MagicMock(spec=discord.Member)
-    interaction.user.id = user_id
-    interaction.guild = MagicMock()
-    interaction.response = MagicMock()
-    interaction.response.send_message = AsyncMock()
-    return interaction
-
-
-@pytest.fixture
-def cache() -> MagicMock:
-    c = MagicMock()
-    c.config = Configuration.default()
-    c.refresh = AsyncMock()
-    c.all_events = MagicMock(return_value=[])
-    c.get_event = MagicMock(return_value=None)
-    return c
+from src.models.models import EventDate
+from tests.helpers import make_interaction
 
 
 @pytest.mark.asyncio

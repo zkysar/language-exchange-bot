@@ -12,20 +12,6 @@ from src.commands.setup_wizard import (
     _RoleSelectForBucket,
     build_command,
 )
-from src.models.models import Configuration
-
-
-@pytest.fixture
-def sheets():
-    return MagicMock()
-
-
-@pytest.fixture
-def cache():
-    c = MagicMock()
-    c.config = Configuration.default()
-    c.refresh = AsyncMock()
-    return c
 
 
 @pytest_asyncio.fixture
