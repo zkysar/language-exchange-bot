@@ -33,9 +33,13 @@ COMMAND_HELP = {
     "hosting": "Use `/hosting action:signup date:<date>` to claim an open date, "
                "`/hosting action:signup pattern:'every 2nd Tuesday'` to set up a recurring pattern, "
                "`/hosting action:cancel date:<date>` to cancel a date, or "
-               "`/hosting action:cancel pattern:<pattern>` to cancel a recurring pattern.",
-    "config":"Owner-only. Use `/config show` to see all settings, `/config set <setting> <value>` "
-              "to change a setting, or `/config roles <action> <bucket> [role]` to manage roles.",
+               "`/hosting action:cancel pattern:<pattern>` to cancel a recurring pattern. "
+               "When `meeting_schedule` is set in config, signups are restricted to "
+               "the days the exchange actually meets.",
+    "config": "Owner-only. Use `/config` to view all settings, `/config action:set key:<key> value:<v>` "
+              "to change a setting, or `/config action:add|remove key:admin|host|member value:<role>` "
+              "to manage role buckets. Set `meeting_schedule` (e.g. `every wednesday`) to restrict "
+              "signups, schedule view, and warnings to meeting days; leave value empty to clear.",
     "setup": "Owner-only. Guided wizard that walks through all essential bot configuration.",
     "sync": "Admin-only. Forces a full resync of local cache from Google Sheets.",
 }

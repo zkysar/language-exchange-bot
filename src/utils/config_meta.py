@@ -75,13 +75,13 @@ SETTINGS: dict[str, SettingMeta] = {
         sheets_type="string",
         description="Channel where the bot posts schedule announcements and host-needed warnings",
     ),
-    "meeting_pattern": SettingMeta(
+    "meeting_schedule": SettingMeta(
         group="schedule",
-        label="Meeting pattern",
+        label="Meeting schedule",
         setting_type="pattern",
-        config_key="meeting_pattern",
+        config_key="meeting_schedule",
         sheets_type="string",
-        description="Recurrence pattern for when the exchange meets (e.g. 'every wednesday', 'every 2nd tuesday'). Leave blank to allow any date.",
+        description="When the exchange meets (e.g. 'every wednesday', 'every 2nd tuesday'). Leave blank to allow any date.",
     ),
 }
 

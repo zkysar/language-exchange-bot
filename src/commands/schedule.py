@@ -9,6 +9,7 @@ from discord import app_commands
 from src.services.cache_service import CacheService
 from src.utils.auth import is_host
 from src.utils.date_parser import format_display, parse_iso_date, today_la
+from src.utils.meeting_schedule import generate_meeting_dates
 
 
 def build_command(cache: CacheService) -> app_commands.Command:
@@ -76,8 +77,11 @@ def build_command(cache: CacheService) -> app_commands.Command:
         else:
             lines = [f"**Schedule — next {w} week(s)**"]
             events = {e.date: e for e in cache.all_events()}
+            meeting_dates = generate_meeting_dates(cache.config, today, horizon)
             for i in range((horizon - today).days + 1):
                 d = today + timedelta(days=i)
+                if meeting_dates is not None and d not in meeting_dates:
+                    continue
                 ev = events.get(d)
                 if ev and ev.is_assigned:
                     marker = "✅"

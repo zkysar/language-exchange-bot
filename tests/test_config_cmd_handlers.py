@@ -471,3 +471,123 @@ async def test_value_autocomplete_non_timezone_returns_empty(
     interaction.namespace.key = "warning_passive_days"
     results = await autocomplete_fn(interaction, "5")
     assert results == []
+
+
+# ── value autocomplete: meeting_schedule ──────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_value_autocomplete_meeting_schedule_empty_returns_all_suggestions(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
+    cmd = build_command(sheets, cache)
+    autocomplete_fn = cmd._params["value"].autocomplete
+    interaction = make_interaction()
+    interaction.namespace.key = "meeting_schedule"
+    results = await autocomplete_fn(interaction, "")
+    values = [c.value for c in results]
+    # All 14 suggestions in the design
+    assert "every monday" in values
+    assert "every sunday" in values
+    assert "every 2nd tuesday" in values
+    assert "biweekly wednesday" in values
+    assert len(results) == 14
+
+
+@pytest.mark.asyncio
+async def test_value_autocomplete_meeting_schedule_filters_by_substring(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
+    cmd = build_command(sheets, cache)
+    autocomplete_fn = cmd._params["value"].autocomplete
+    interaction = make_interaction()
+    interaction.namespace.key = "meeting_schedule"
+    results = await autocomplete_fn(interaction, "wed")
+    assert len(results) > 0
+    for c in results:
+        assert "wed" in c.value.lower()
+
+
+@pytest.mark.asyncio
+async def test_value_autocomplete_meeting_schedule_case_insensitive(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
+    cmd = build_command(sheets, cache)
+    autocomplete_fn = cmd._params["value"].autocomplete
+    interaction = make_interaction()
+    interaction.namespace.key = "meeting_schedule"
+    lowercase = await autocomplete_fn(interaction, "tue")
+    uppercase = await autocomplete_fn(interaction, "TUE")
+    assert [c.value for c in lowercase] == [c.value for c in uppercase]
+    assert len(lowercase) > 0
+
+
+# ── /config get (keyed): graceful None rendering ──────────────────────────────
+
+@pytest.mark.asyncio
+async def test_get_keyed_none_scalar_renders_not_set(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
+    cache.config.meeting_schedule = None
+    cmd = build_command(sheets, cache)
+    interaction = make_interaction()
+    with patch("src.commands.config_cmd.is_owner", return_value=True):
+        await cmd.callback(
+            interaction,
+            action=action_choice("get"),
+            key=key_choice("meeting_schedule"),
+            value=None,
+        )
+    args, _ = interaction.response.send_message.call_args
+    text = args[0]
+    assert "*not set*" in text
+    assert "**None**" not in text
+
+
+@pytest.mark.asyncio
+async def test_get_keyed_set_meeting_schedule_displays_value(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
+    cache.config.meeting_schedule = "every wednesday"
+    cmd = build_command(sheets, cache)
+    interaction = make_interaction()
+    with patch("src.commands.config_cmd.is_owner", return_value=True):
+        await cmd.callback(
+            interaction,
+            action=action_choice("get"),
+            key=key_choice("meeting_schedule"),
+            value=None,
+        )
+    args, _ = interaction.response.send_message.call_args
+    assert "every wednesday" in args[0]
+
+
+# ── /config get (no key): overview includes meeting_schedule ──────────────────
+
+@pytest.mark.asyncio
+async def test_get_no_key_shows_meeting_schedule_unset(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
+    cache.config.meeting_schedule = None
+    cmd = build_command(sheets, cache)
+    interaction = make_interaction(guild=False)
+    with patch("src.commands.config_cmd.is_owner", return_value=True):
+        await cmd.callback(interaction, action=None, key=None, value=None)
+    args, _ = interaction.response.send_message.call_args
+    text = args[0]
+    assert "Meeting schedule" in text
+    assert "*not set*" in text
+
+
+@pytest.mark.asyncio
+async def test_get_no_key_shows_meeting_schedule_value(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
+    cache.config.meeting_schedule = "every wednesday"
+    cmd = build_command(sheets, cache)
+    interaction = make_interaction(guild=False)
+    with patch("src.commands.config_cmd.is_owner", return_value=True):
+        await cmd.callback(interaction, action=None, key=None, value=None)
+    args, _ = interaction.response.send_message.call_args
+    text = args[0]
+    assert "Meeting schedule" in text
+    assert "every wednesday" in text

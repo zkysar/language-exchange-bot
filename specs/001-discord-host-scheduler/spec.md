@@ -199,6 +199,13 @@ When the database becomes corrupted or inconsistent, an administrator needs to r
   - `admin_role_ids`: all host capabilities plus technical operations (`/sync`, `/reset`, direct sheet operations)
 - **FR-027**: Role→tier mapping MUST be maintained by editing the Configuration sheet directly; the bot does NOT provide commands to add/remove members, hosts, or admins. Role membership itself is managed in Discord via standard role assignment.
 - **FR-028**: System MUST render all member-invoked responses as ephemeral Discord messages so that members only see output addressed to themselves; host and admin responses MAY be public
+- **FR-029**: System MUST support an optional `meeting_schedule` configuration setting (a recurrence pattern such as `every wednesday` or `every 2nd tuesday`) that describes the days the exchange meets. When set:
+  - Single-date signups for non-meeting days MUST be rejected with a message identifying the configured schedule
+  - Recurring signup patterns MUST align with the meeting schedule (every date the host's pattern generates in the next 3 months must also be a meeting day); misaligned patterns MUST be rejected before the preview
+  - `/schedule` MUST display only meeting days in the default (non-user-filtered) view
+  - The warning service MUST skip non-meeting days when generating unassigned-day warnings
+  - When unset, every day counts and prior behavior is preserved
+  - Malformed `meeting_schedule` values MUST fall back gracefully to "allow any day" rather than block all operations
 
 ### Key Entities
 
@@ -207,7 +214,7 @@ When the database becomes corrupted or inconsistent, an administrator needs to r
 - **Recurring Pattern**: A schedule rule defining regular hosting commitments; includes pattern description, affected dates, and associated host
 - **Warning**: An alert about an unassigned date; includes date, severity level (passive/urgent), timestamp, and target channel/roles
 - **Audit Entry**: A log record of system actions; includes timestamp, action type, user who initiated, affected date/host, and outcome
-- **Configuration**: System settings; includes warning thresholds (days), daily check time, default schedule window, designated channels, and three role ID lists (`member_role_ids`, `host_role_ids`, `admin_role_ids`) stored in the Configuration sheet for three-tier role-based authorization. The role→tier mapping is seeded and edited directly in the sheet; the bot does not manage it.
+- **Configuration**: System settings; includes warning thresholds (days), daily check time, default schedule window, designated channels, an optional `meeting_schedule` recurrence describing when the exchange meets, and three role ID lists (`member_role_ids`, `host_role_ids`, `admin_role_ids`) stored in the Configuration sheet for three-tier role-based authorization. The role→tier mapping is seeded and edited directly in the sheet; the bot does not manage it.
 
 ## Success Criteria *(mandatory)*
 

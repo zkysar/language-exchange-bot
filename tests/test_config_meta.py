@@ -57,33 +57,38 @@ def test_validate_unknown_key():
     assert ok is False
 
 
-def test_meeting_pattern_in_settings():
-    assert "meeting_pattern" in SETTINGS
-    meta = SETTINGS["meeting_pattern"]
+def test_meeting_schedule_in_settings():
+    assert "meeting_schedule" in SETTINGS
+    meta = SETTINGS["meeting_schedule"]
     assert meta.group == "schedule"
     assert meta.setting_type == "pattern"
+    assert meta.label == "Meeting schedule"
 
 
-def test_validate_meeting_pattern_valid():
-    ok, val, err = validate_setting("meeting_pattern", "every wednesday")
+def test_old_meeting_pattern_key_removed():
+    assert "meeting_pattern" not in SETTINGS
+
+
+def test_validate_meeting_schedule_valid():
+    ok, val, err = validate_setting("meeting_schedule", "every wednesday")
     assert ok is True
     assert val == "every wednesday"
     assert err is None
 
 
-def test_validate_meeting_pattern_valid_nth():
-    ok, val, err = validate_setting("meeting_pattern", "every 2nd tuesday")
+def test_validate_meeting_schedule_valid_nth():
+    ok, val, err = validate_setting("meeting_schedule", "every 2nd tuesday")
     assert ok is True
 
 
-def test_validate_meeting_pattern_invalid():
-    ok, val, err = validate_setting("meeting_pattern", "not a real pattern")
+def test_validate_meeting_schedule_invalid():
+    ok, val, err = validate_setting("meeting_schedule", "not a real pattern")
     assert ok is False
     assert err is not None
 
 
-def test_validate_meeting_pattern_empty_clears():
-    ok, val, err = validate_setting("meeting_pattern", "")
+def test_validate_meeting_schedule_empty_clears():
+    ok, val, err = validate_setting("meeting_schedule", "")
     assert ok is True
     assert val == ""
 

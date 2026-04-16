@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.commands.config_cmd import build_command
+from src.commands.config_cmd import KEY_CHOICES, build_command
 from src.models.models import Configuration
 
 
@@ -32,3 +32,9 @@ def test_config_command_has_expected_params(sheets, cache):
     assert "action" in param_names
     assert "key" in param_names
     assert "value" in param_names
+
+
+def test_meeting_schedule_key_choice_label_includes_example():
+    mp_choice = next((c for c in KEY_CHOICES if c.value == "meeting_schedule"), None)
+    assert mp_choice is not None
+    assert 'every wednesday' in mp_choice.name.lower()

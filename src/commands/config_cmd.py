@@ -36,8 +36,33 @@ _ALL_ACTIONS = [
     app_commands.Choice(name="remove", value="remove"),
 ]
 
+# Dropdown labels with format hints. Falls through to `meta.label` when not listed.
+# Error messages and /config display still use the plain `meta.label`.
+_KEY_DROPDOWN_LABELS: dict[str, str] = {
+    "meeting_schedule": 'Meeting schedule — e.g. "every wednesday"',
+}
+
+_MEETING_SCHEDULE_SUGGESTIONS: list[str] = [
+    "every monday",
+    "every tuesday",
+    "every wednesday",
+    "every thursday",
+    "every friday",
+    "every saturday",
+    "every sunday",
+    "every 1st monday",
+    "every 2nd tuesday",
+    "every 2nd wednesday",
+    "every 3rd thursday",
+    "every last friday",
+    "biweekly wednesday",
+    "biweekly friday",
+]
+
 KEY_CHOICES = [
-    app_commands.Choice(name=meta.label, value=key)
+    app_commands.Choice(
+        name=_KEY_DROPDOWN_LABELS.get(key, meta.label), value=key
+    )
     for key, meta in SETTINGS.items()
 ] + [
     app_commands.Choice(name=_ROLE_LABELS[bucket], value=bucket)
@@ -95,10 +120,16 @@ def build_command(sheets: SheetsService, cache: CacheService) -> app_commands.Co
     async def _value_autocomplete(
         interaction: discord.Interaction, current: str
     ) -> list[app_commands.Choice[str]]:
-        if getattr(interaction.namespace, "key", None) == "daily_check_timezone":
-            lower = current.lower()
+        key = getattr(interaction.namespace, "key", None)
+        lower = current.lower()
+        if key == "daily_check_timezone":
             matches = [tz for tz in _TZ_CACHE if lower in tz.lower()]
             return [app_commands.Choice(name=tz, value=tz) for tz in matches[:25]]
+        if key == "meeting_schedule":
+            matches = [
+                s for s in _MEETING_SCHEDULE_SUGGESTIONS if lower in s.lower()
+            ]
+            return [app_commands.Choice(name=s, value=s) for s in matches[:25]]
         return []
 
     return config
@@ -129,6 +160,9 @@ async def _handle_get(
         return ", ".join(f"`{r}`" for r in ids)
 
     if key_val is None:
+        meeting_display = (
+            f"**{cfg.meeting_schedule}**" if cfg.meeting_schedule else "*not set*"
+        )
         lines = [
             "**Warnings**",
             f"  Passive warning days: **{cfg.warning_passive_days}**",
@@ -138,6 +172,7 @@ async def _handle_get(
             f"  Window weeks: **{cfg.schedule_window_weeks}**",
             f"  Daily check time: **{cfg.daily_check_time}**",
             f"  Timezone: **{cfg.daily_check_timezone}**",
+            f"  Meeting schedule: {meeting_display}",
             "",
             "**Channel**",
             f"  Announcement channel: {_channel_mention(cfg.announcement_channel_id)}",
@@ -162,6 +197,8 @@ async def _handle_get(
         raw = getattr(cfg, meta.config_key)
         if meta.setting_type == "channel":
             display = _channel_mention(raw)
+        elif raw is None or raw == "":
+            display = "*not set*"
         else:
             display = f"**{raw}**"
         await interaction.response.send_message(f"{meta.label}: {display}", ephemeral=True)

@@ -532,28 +532,28 @@ async def test_pattern_autocomplete_cancel_returns_active_patterns(
     assert results[0].name == "every monday"
 
 
-# ── signup date autocomplete with meeting_pattern ─────────────────────────────
+# ── signup date autocomplete with meeting_schedule ────────────────────────────
 
-def _make_cache_for_autocomplete(meeting_pattern=None):
+def _make_cache_for_autocomplete(meeting_schedule=None):
     cache = MagicMock()
     cache.config = Configuration.default()
-    cache.config.meeting_pattern = meeting_pattern
+    cache.config.meeting_schedule = meeting_schedule
     cache.refresh = AsyncMock()
     cache.all_events = MagicMock(return_value=[])
     return cache
 
 
 @pytest.mark.asyncio
-async def test_autocomplete_no_pattern_returns_all_days():
-    cache = _make_cache_for_autocomplete(meeting_pattern=None)
+async def test_autocomplete_no_schedule_returns_all_days():
+    cache = _make_cache_for_autocomplete(meeting_schedule=None)
     interaction = MagicMock(spec=discord.Interaction)
     choices = await _signup_date_autocomplete(interaction, "", cache)
     assert len(choices) == 25  # hits the cap
 
 
 @pytest.mark.asyncio
-async def test_autocomplete_with_wednesday_pattern_returns_only_wednesdays():
-    cache = _make_cache_for_autocomplete(meeting_pattern="every wednesday")
+async def test_autocomplete_with_wednesday_schedule_returns_only_wednesdays():
+    cache = _make_cache_for_autocomplete(meeting_schedule="every wednesday")
     interaction = MagicMock(spec=discord.Interaction)
     choices = await _signup_date_autocomplete(interaction, "", cache)
     assert len(choices) > 0
@@ -563,8 +563,107 @@ async def test_autocomplete_with_wednesday_pattern_returns_only_wednesdays():
 
 
 @pytest.mark.asyncio
-async def test_autocomplete_with_invalid_pattern_falls_back_to_all_days():
-    cache = _make_cache_for_autocomplete(meeting_pattern="not parseable garbage")
+async def test_autocomplete_with_invalid_schedule_falls_back_to_all_days():
+    cache = _make_cache_for_autocomplete(meeting_schedule="not parseable garbage")
     interaction = MagicMock(spec=discord.Interaction)
     choices = await _signup_date_autocomplete(interaction, "", cache)
     assert len(choices) == 25  # graceful fallback
+
+
+# ── single-date signup vs meeting_schedule ────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_signup_date_off_schedule_rejected(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    # meeting_schedule = every wednesday; host tries to sign up for Tuesday
+    cache.config.meeting_schedule = "every wednesday"
+    cache.get_event.return_value = None
+    cmd = build_command(sheets, cache, warnings_svc)
+    interaction = make_interaction(user_id=1)
+    with (
+        patch("src.commands.hosting.is_host", return_value=True),
+        patch("src.commands.hosting.today_la", return_value=date(2026, 4, 1)),
+    ):
+        # 2026-04-14 is a Tuesday; meeting is every wednesday → blocked
+        await cmd.callback(interaction, action=_SIGNUP, date="2026-04-14")
+    sheets.upsert_schedule_row.assert_not_called()
+    interaction.response.send_message.assert_awaited_once()
+    args, kwargs = interaction.response.send_message.call_args
+    assert kwargs.get("ephemeral") is True
+    assert "meeting" in args[0].lower() or "schedule" in args[0].lower()
+
+
+@pytest.mark.asyncio
+async def test_signup_date_on_schedule_proceeds(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    cache.config.meeting_schedule = "every wednesday"
+    cache.get_event.return_value = None
+    cmd = build_command(sheets, cache, warnings_svc)
+    interaction = make_interaction(user_id=1)
+    with (
+        patch("src.commands.hosting.is_host", return_value=True),
+        patch("src.commands.hosting.today_la", return_value=date(2026, 4, 1)),
+    ):
+        # 2026-04-15 is a Wednesday → allowed
+        await cmd.callback(interaction, action=_SIGNUP, date="2026-04-15")
+    sheets.upsert_schedule_row.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_signup_date_unset_schedule_allows_any_day(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    cache.config.meeting_schedule = None  # unset — any day allowed
+    cache.get_event.return_value = None
+    cmd = build_command(sheets, cache, warnings_svc)
+    interaction = make_interaction(user_id=1)
+    with (
+        patch("src.commands.hosting.is_host", return_value=True),
+        patch("src.commands.hosting.today_la", return_value=date(2026, 4, 1)),
+    ):
+        await cmd.callback(interaction, action=_SIGNUP, date="2026-04-14")
+    sheets.upsert_schedule_row.assert_called_once()
+
+
+# ── recurring signup vs meeting_schedule ──────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_signup_recurring_misaligned_blocked(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    cache.config.meeting_schedule = "every wednesday"
+    cmd = build_command(sheets, cache, warnings_svc)
+    interaction = make_interaction(user_id=1)
+    with (
+        patch("src.commands.hosting.is_host", return_value=True),
+        patch("src.commands.hosting.today_la", return_value=date(2026, 4, 1)),
+    ):
+        await cmd.callback(interaction, action=_SIGNUP, pattern="every tuesday")
+    interaction.response.send_message.assert_awaited_once()
+    args, kwargs = interaction.response.send_message.call_args
+    assert kwargs.get("ephemeral") is True
+    # Error should mention the meeting schedule
+    assert "every wednesday" in args[0].lower() or "meeting" in args[0].lower()
+
+
+@pytest.mark.asyncio
+async def test_signup_recurring_aligned_proceeds_to_preview(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    cache.config.meeting_schedule = "every wednesday"
+    cmd = build_command(sheets, cache, warnings_svc)
+    interaction = make_interaction(user_id=1)
+    with (
+        patch("src.commands.hosting.is_host", return_value=True),
+        patch("src.commands.hosting.today_la", return_value=date(2026, 4, 1)),
+    ):
+        # "every wednesday" matches the meeting schedule exactly
+        await cmd.callback(
+            interaction, action=_SIGNUP, pattern="every wednesday"
+        )
+    # Non-blocked path sends a preview message with a confirmation view
+    interaction.response.send_message.assert_awaited_once()
+    _, kwargs = interaction.response.send_message.call_args
+    assert isinstance(kwargs.get("view"), _ConfirmView)
