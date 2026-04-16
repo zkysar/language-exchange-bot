@@ -9,7 +9,6 @@ from discord import app_commands
 from src.commands import config_cmd as config_mod
 from src.commands import help_cmd as help_mod
 from src.commands import hosting as hosting_mod
-from src.commands import reset as reset_mod
 from src.commands import schedule as schedule_mod
 from src.commands import setup_wizard as setup_wizard_mod
 from src.commands import sync as sync_mod
@@ -28,7 +27,6 @@ def _build_tree() -> app_commands.CommandTree:
     tree.add_command(hosting_mod.build_command(sheets, cache, warnings))
     tree.add_command(schedule_mod.build_command(cache))
     tree.add_command(sync_mod.build_command(sheets, cache))
-    tree.add_command(reset_mod.build_command(sheets, cache))
     tree.add_command(config_mod.build_group(sheets, cache))
     tree.add_command(setup_wizard_mod.build_command(sheets, cache))
     tree.add_command(help_mod.build_command(cache))

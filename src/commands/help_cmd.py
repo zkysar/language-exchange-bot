@@ -38,7 +38,6 @@ COMMAND_HELP = {
               "to change a setting, or `/config roles <action> <bucket> [role]` to manage roles.",
     "setup": "Owner-only. Guided wizard that walks through all essential bot configuration.",
     "sync": "Admin-only. Forces a full resync of local cache from Google Sheets.",
-    "reset": "Admin-only. Displays the reset procedure and requires confirmation.",
 }
 
 HELP_TEXT = {None: "", **COMMAND_HELP}
@@ -69,7 +68,6 @@ _ADMIN_CATEGORY = (
     "Admin",
     [
         ("/sync", "Force sync with Google Sheets"),
-        ("/reset", "Reset the database cache"),
     ],
 )
 
@@ -86,7 +84,7 @@ _OWNER_CATEGORY = (
 _AUTOCOMPLETE_TIERS = [
     (is_member, ["schedule", "warnings"]),
     (is_host, ["hosting"]),
-    (is_admin, ["sync", "reset"]),
+    (is_admin, ["sync"]),
     (is_owner, ["config", "setup"]),
 ]
 
