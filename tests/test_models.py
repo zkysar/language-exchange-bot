@@ -104,3 +104,13 @@ def test_configuration_channel_ids_default_none():
     c = Configuration.default()
     assert c.schedule_channel_id is None
     assert c.warnings_channel_id is None
+
+
+def test_configuration_meeting_pattern_default_none():
+    cfg = Configuration.default()
+    assert cfg.meeting_pattern is None
+
+
+def test_configuration_meeting_pattern_can_be_set():
+    cfg = Configuration(meeting_pattern="every wednesday")
+    assert cfg.meeting_pattern == "every wednesday"
