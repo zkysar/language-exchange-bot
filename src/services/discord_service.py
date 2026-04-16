@@ -11,7 +11,6 @@ from discord.ext import tasks
 from src.commands import config_cmd as config_mod
 from src.commands import help_cmd as help_mod
 from src.commands import hosting as hosting_mod
-from src.commands import reset as reset_mod
 from src.commands import schedule as schedule_mod
 from src.commands import setup_wizard as setup_wizard_mod
 from src.commands import sync as sync_mod
@@ -40,7 +39,6 @@ class SchedulerBot(discord.Client):
         self.tree.add_command(hosting_mod.build_command(self.sheets, self.cache, self.warnings))
         self.tree.add_command(schedule_mod.build_command(self.cache))
         self.tree.add_command(sync_mod.build_command(self.sheets, self.cache))
-        self.tree.add_command(reset_mod.build_command(self.sheets, self.cache))
         self.tree.add_command(config_mod.build_group(self.sheets, self.cache))
         self.tree.add_command(setup_wizard_mod.build_command(self.sheets, self.cache))
         self.tree.add_command(help_mod.build_command(self.cache))
