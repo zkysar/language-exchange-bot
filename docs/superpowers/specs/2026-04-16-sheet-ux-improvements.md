@@ -97,6 +97,16 @@ NEED HELP?
 
 **Idempotency**: Check if row 2 already contains the display headers before inserting.
 
+**Existing sheet migration**: The Schedule tab may already have data starting at row 2 (no display row). `apply_sheet_ux()` detects and handles three states:
+
+1. **Fresh sheet** (row 2 is empty or doesn't exist): Insert display header row at row 2. Done.
+2. **Existing sheet with data at row 2** (no display row yet): Read row 2 col A. If the value is a YYYY-MM-DD date string (or anything other than "Date"), call `insert_row()` at position 2 with the display headers. `insert_row` shifts all existing data down to row 3+ automatically — no data loss, no manual re-numbering needed.
+3. **Already migrated** (row 2 col A = "Date"): Skip insertion, already set up.
+
+Detection logic: `val = ws.acell("A2").value` — if `val == "Date"`, state 3. If `val` is truthy (contains data), state 2. If `val` is falsy/None, state 1.
+
+This migration is safe to run on sheets with existing data. The `insert_row` call is atomic from Google Sheets' perspective — it shifts all rows below and preserves their content and formatting.
+
 ---
 
 ## Feature 5: Data Validation and Conditional Formatting
@@ -146,7 +156,7 @@ NEED HELP?
 
 ## Risks
 
-1. **Existing sheets with data**: If a user already has data in the sheet, inserting the display header row 2 would shift all existing data down by one row. The implementation must detect whether the display row already exists before inserting. Detection: check if row 2 col A value equals "Date" (the display header).
+1. **Existing sheets with data**: Handled by the three-state migration logic in Feature 4. `insert_row()` at position 2 safely shifts existing data down. Detection via `ws.acell("A2").value` distinguishes fresh, existing-data, and already-migrated states.
 2. **API quota**: The UX setup makes several additional API calls on startup (hide, protect, format, batch_update). These are one-time-per-startup calls and well within quota limits.
 3. **Protected range accumulation**: If `add_protected_range()` is called on every startup without checking, it could accumulate duplicate protected ranges. Must check before adding.
 4. **Conditional format rule accumulation**: Similarly, clearing and re-adding conditional format rules on each startup avoids stacking duplicates.
