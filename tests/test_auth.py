@@ -126,9 +126,21 @@ def test_admin_role_grants_member(config):
     assert is_member(user, config) is True
 
 
-def test_no_roles_is_not_member(config):
+def test_no_matching_roles_is_not_member(config):
     user = make_member(1, role_ids=[])
     assert is_member(user, config) is False
+
+
+def test_empty_member_role_ids_allows_everyone():
+    open_config = Configuration(member_role_ids=[], host_role_ids=[200], admin_role_ids=[300])
+    user = make_member(1, role_ids=[])
+    assert is_member(user, open_config) is True
+
+
+def test_plain_user_allowed_when_member_role_ids_empty():
+    open_config = Configuration(member_role_ids=[])
+    user = make_plain_user(1)
+    assert is_member(user, open_config) is True
 
 
 def test_owner_is_member(config):
