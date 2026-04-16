@@ -17,4 +17,7 @@ RUN pip install -r requirements.txt
 COPY src ./src
 COPY assets ./assets
 
+ARG APP_VERSION=dev
+RUN echo "${APP_VERSION}" > VERSION
+
 CMD ["python", "-m", "src.bot"]

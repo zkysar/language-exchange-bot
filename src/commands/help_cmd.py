@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional
 
 import discord
@@ -8,6 +9,13 @@ from discord import app_commands
 from src.commands.sheet import sheet_url
 from src.services.cache_service import CacheService
 from src.utils.auth import is_admin
+
+
+def _read_version() -> str:
+    p = Path("VERSION")
+    if p.exists():
+        return p.read_text().strip()
+    return "dev"
 
 BOT_DESCRIPTION = (
     "I help coordinate language-exchange hosting. "
@@ -88,7 +96,7 @@ def _build_embed(show_admin: bool, show_owner: bool) -> discord.Embed:
         heading, cmds = _OWNER_CATEGORY
         lines = "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
         embed.add_field(name=heading, value=lines, inline=False)
-    embed.set_footer(text=f"Sheet: {sheet_url()}")
+    embed.set_footer(text=f"{_read_version()} · Sheet: {sheet_url()}")
     return embed
 
 
