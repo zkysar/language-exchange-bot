@@ -491,7 +491,7 @@ async def test_date_autocomplete_cancel_returns_assigned_dates(
 
 
 @pytest.mark.asyncio
-async def test_pattern_autocomplete_non_cancel_returns_empty(
+async def test_pattern_autocomplete_signup_returns_suggestions(
     sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
 ) -> None:
     cmd = build_command(sheets, cache, warnings_svc)
@@ -499,7 +499,13 @@ async def test_pattern_autocomplete_non_cancel_returns_empty(
     interaction = make_interaction()
     interaction.data = {"options": [{"name": "action", "value": "signup"}]}
     results = await autocomplete(interaction, "")
-    assert results == []
+    assert len(results) > 0
+    values = [c.value for c in results]
+    assert "every Tuesday" in values
+    assert "every 2nd Tuesday" in values
+
+    filtered = await autocomplete(interaction, "2nd")
+    assert all("2nd" in c.name.lower() for c in filtered)
 
 
 @pytest.mark.asyncio

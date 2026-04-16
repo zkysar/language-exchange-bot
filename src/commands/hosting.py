@@ -56,7 +56,30 @@ def build_command(
             if opt.get("name") == "action":
                 action = opt.get("value")
         if action != "cancel":
-            return []
+            suggestions = [
+                "every Monday", "every Tuesday", "every Wednesday",
+                "every Thursday", "every Friday", "every Saturday", "every Sunday",
+                "every 1st Monday", "every 1st Tuesday", "every 1st Wednesday",
+                "every 1st Thursday", "every 1st Friday", "every 1st Saturday", "every 1st Sunday",
+                "every 2nd Monday", "every 2nd Tuesday", "every 2nd Wednesday",
+                "every 2nd Thursday", "every 2nd Friday", "every 2nd Saturday", "every 2nd Sunday",
+                "every 3rd Monday", "every 3rd Tuesday", "every 3rd Wednesday",
+                "every 3rd Thursday", "every 3rd Friday", "every 3rd Saturday", "every 3rd Sunday",
+                "every 4th Monday", "every 4th Tuesday", "every 4th Wednesday",
+                "every 4th Thursday", "every 4th Friday", "every 4th Saturday", "every 4th Sunday",
+                "every last Monday", "every last Tuesday", "every last Wednesday",
+                "every last Thursday", "every last Friday", "every last Saturday", "every last Sunday",
+                "every other Monday", "every other Tuesday", "every other Wednesday",
+                "every other Thursday", "every other Friday", "every other Saturday", "every other Sunday",
+                "monthly on the 1", "monthly on the 15",
+            ]
+            choices: List[app_commands.Choice[str]] = []
+            for s in suggestions:
+                if not current or current.lower() in s.lower():
+                    choices.append(app_commands.Choice(name=s, value=s))
+                if len(choices) >= 25:
+                    break
+            return choices
         target_id = None
         for opt in interaction.data.get("options", []) or []:
             if opt.get("name") == "user":
