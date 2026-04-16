@@ -15,7 +15,7 @@ A Discord bot that manages host volunteering for recurring meetups, backed by Go
 On first run the bot creates the required sheets (Schedule, RecurringPatterns,
 AuditLog, Configuration) with default configuration. Edit the Configuration sheet
 to set `member_role_ids`, `host_role_ids`, `admin_role_ids` (JSON arrays of
-Discord role IDs), and `warnings_channel_id` / `schedule_channel_id`.
+Discord role IDs), and `announcement_channel_id`.
 
 Set `meeting_pattern` (e.g. `every wednesday`, `every 2nd tuesday`) to restrict the
 `/hosting signup` date autocomplete to only the days your exchange actually meets.
@@ -29,11 +29,9 @@ Leave it blank to allow any date. Configurable via `/setup` Step 3 or `/config`.
 - `/hosting action:signup pattern:<pattern>` — set a recurring pattern (e.g. `every 2nd Tuesday`)
 - `/hosting action:cancel date:<date>` — cancel a specific date
 - `/hosting action:cancel pattern:<pattern>` — cancel a recurring pattern
-- `/sheet` — link to the backing Google Sheet
 - `/config show|set|roles` — (owner) view or change configuration
 - `/setup` — (owner) guided setup wizard
 - `/sync` — (admin) force resync
-- `/reset` — (admin) reset cache
 - `/help [command]` — help
 
 All dates are interpreted and displayed in `America/Los_Angeles`.

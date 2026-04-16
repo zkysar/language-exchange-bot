@@ -13,7 +13,7 @@ from src.models.models import EventDate, RecurringPattern
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService, make_audit
 from src.services.warning_service import WarningService
-from src.utils.auth import is_host
+from src.utils.auth import is_admin, is_host
 from src.utils.date_parser import (
     format_date,
     format_display,
@@ -109,6 +109,15 @@ def build_command(
 
         act = action.value
         target = user or interaction.user
+
+        if user is not None and user.id != interaction.user.id and not is_admin(
+            interaction.user, cache.config
+        ):
+            await interaction.response.send_message(
+                "Only admins can sign up or cancel for another user.",
+                ephemeral=True,
+            )
+            return
 
         if act == "signup" and date:
             await _signup_date(interaction, sheets, cache, target, date)
@@ -209,9 +218,11 @@ async def _signup_date(
                 ),
             )
             cache.upsert_event(event)
-        except Exception as e:
+        except Exception:
             log.exception("volunteer write failed")
-            await interaction.followup.send(f"Failed to update schedule: {e}")
+            await interaction.followup.send(
+                "Failed to update schedule. Please try again later."
+            )
             return
 
     await interaction.followup.send(
@@ -228,8 +239,12 @@ async def _signup_recurring(
 ) -> None:
     try:
         parsed = parse_pattern(pattern_str)
-    except ValueError as e:
-        await interaction.response.send_message(f"{e}", ephemeral=True)
+    except ValueError:
+        await interaction.response.send_message(
+            "Pattern not recognized. Try formats like `every 2nd Tuesday` or "
+            "`monthly on the 1st`.",
+            ephemeral=True,
+        )
         return
 
     start = today_la() + timedelta(days=1)
@@ -332,9 +347,11 @@ class _ConfirmView(discord.ui.View):
                     ),
                 )
                 self.cache.add_pattern(pattern)
-            except Exception as e:
+            except Exception:
                 log.exception("recurring commit failed")
-                await interaction.followup.send(f"Failed: {e}")
+                await interaction.followup.send(
+                    "Failed to create recurring assignment. Please try again later."
+                )
                 return
         self.stop()
         await interaction.followup.send(
@@ -417,9 +434,11 @@ async def _cancel_date(
                 ),
             )
             cache.remove_event_assignment(d)
-        except Exception as e:
+        except Exception:
             log.exception("unvolunteer failed")
-            await interaction.followup.send(f"Failed: {e}")
+            await interaction.followup.send(
+                "Failed to cancel hosting. Please try again later."
+            )
             return
 
     msg = f"Removed <@{target.id}> from **{format_display(d)}**."

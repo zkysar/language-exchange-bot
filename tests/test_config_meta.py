@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from src.models.models import Configuration
 from src.utils.config_meta import SETTINGS, SettingMeta, validate_setting
 
 
@@ -85,3 +86,23 @@ def test_validate_meeting_pattern_empty_clears():
     ok, val, err = validate_setting("meeting_pattern", "")
     assert ok is True
     assert val == ""
+
+
+def test_configuration_has_single_announcement_channel_field():
+    cfg = Configuration.default()
+    assert hasattr(cfg, "announcement_channel_id")
+    assert cfg.announcement_channel_id is None
+    assert not hasattr(cfg, "schedule_channel_id")
+    assert not hasattr(cfg, "warnings_channel_id")
+
+
+def test_config_meta_has_single_announcement_channel_entry():
+    assert "announcement_channel_id" in SETTINGS
+    assert "schedule_channel_id" not in SETTINGS
+    assert "warnings_channel_id" not in SETTINGS
+    meta = SETTINGS["announcement_channel_id"]
+    assert meta.group == "channels"
+    assert meta.setting_type == "channel"
+    assert meta.config_key == "announcement_channel_id"
+    assert meta.sheets_type == "string"
+    assert meta.label == "Announcement channel"

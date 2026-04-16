@@ -11,12 +11,9 @@ from discord.ext import tasks
 from src.commands import config_cmd as config_mod
 from src.commands import help_cmd as help_mod
 from src.commands import hosting as hosting_mod
-from src.commands import reset as reset_mod
 from src.commands import schedule as schedule_mod
 from src.commands import setup_wizard as setup_wizard_mod
-from src.commands import sheet as sheet_mod
 from src.commands import sync as sync_mod
-from src.commands import warnings_cmd as warnings_mod
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService
 from src.services.warning_service import WarningService
@@ -41,12 +38,9 @@ class SchedulerBot(discord.Client):
     def _register_commands(self) -> None:
         self.tree.add_command(hosting_mod.build_command(self.sheets, self.cache, self.warnings))
         self.tree.add_command(schedule_mod.build_command(self.cache))
-        self.tree.add_command(warnings_mod.build_command(self.cache, self.warnings))
         self.tree.add_command(sync_mod.build_command(self.sheets, self.cache))
-        self.tree.add_command(reset_mod.build_command(self.sheets, self.cache))
-        self.tree.add_command(config_mod.build_group(self.sheets, self.cache))
+        self.tree.add_command(config_mod.build_command(self.sheets, self.cache))
         self.tree.add_command(setup_wizard_mod.build_command(self.sheets, self.cache))
-        self.tree.add_command(sheet_mod.build_command())
         self.tree.add_command(help_mod.build_command(self.cache))
 
     async def setup_hook(self) -> None:
@@ -106,9 +100,9 @@ class SchedulerBot(discord.Client):
                 items = await self.warnings.check()
                 if not items:
                     return
-                channel_id = config.warnings_channel_id
+                channel_id = config.announcement_channel_id
                 if not channel_id:
-                    log.info("no warnings_channel_id configured; skipping post")
+                    log.info("no announcement_channel_id configured; skipping post")
                     return
                 channel = self.get_channel(int(channel_id))
                 if not channel:

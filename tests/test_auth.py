@@ -6,7 +6,14 @@ import discord
 import pytest
 
 from src.models.models import Configuration
-from src.utils.auth import HARDCODED_OWNER_IDS, is_admin, is_host, is_member, is_owner
+from src.utils.auth import (
+    HARDCODED_OWNER_IDS,
+    _load_hardcoded_owners,
+    is_admin,
+    is_host,
+    is_member,
+    is_owner,
+)
 
 
 def make_member(user_id: int, role_ids: list[int] | None = None) -> MagicMock:
@@ -126,9 +133,21 @@ def test_admin_role_grants_member(config):
     assert is_member(user, config) is True
 
 
-def test_no_roles_is_not_member(config):
+def test_no_matching_roles_is_not_member(config):
     user = make_member(1, role_ids=[])
     assert is_member(user, config) is False
+
+
+def test_empty_member_role_ids_allows_everyone():
+    open_config = Configuration(member_role_ids=[], host_role_ids=[200], admin_role_ids=[300])
+    user = make_member(1, role_ids=[])
+    assert is_member(user, open_config) is True
+
+
+def test_plain_user_allowed_when_member_role_ids_empty():
+    open_config = Configuration(member_role_ids=[])
+    user = make_plain_user(1)
+    assert is_member(user, open_config) is True
 
 
 def test_owner_is_member(config):
@@ -140,3 +159,31 @@ def test_multiple_roles_with_any_match(config):
     user = make_member(1, role_ids=[50, 100, 400])
     assert is_member(user, config) is True
     assert is_host(user, config) is False
+
+
+# -- _load_hardcoded_owners (env-var override) --
+
+def test_load_hardcoded_owners_default_when_env_unset(monkeypatch):
+    monkeypatch.delenv("BOT_OWNER_IDS", raising=False)
+    owners = _load_hardcoded_owners()
+    assert 166793917461692416 in owners
+
+
+def test_load_hardcoded_owners_env_replaces_default(monkeypatch):
+    monkeypatch.setenv("BOT_OWNER_IDS", "111,222,333")
+    owners = _load_hardcoded_owners()
+    assert owners == frozenset({111, 222, 333})
+    # The original default is no longer present
+    assert 166793917461692416 not in owners
+
+
+def test_load_hardcoded_owners_empty_env_revokes_all(monkeypatch):
+    monkeypatch.setenv("BOT_OWNER_IDS", "")
+    owners = _load_hardcoded_owners()
+    assert owners == frozenset()
+
+
+def test_load_hardcoded_owners_skips_garbage(monkeypatch):
+    monkeypatch.setenv("BOT_OWNER_IDS", "111, not-an-id ,222,")
+    owners = _load_hardcoded_owners()
+    assert owners == frozenset({111, 222})

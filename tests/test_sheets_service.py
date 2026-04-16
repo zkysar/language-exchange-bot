@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import gspread
 
 from src.models.models import AuditEntry, EventDate, RecurringPattern
-from src.services.sheets_service import SheetsService
+from src.services.sheets_service import SheetsService, _escape_cell
 
 
 def _make_svc() -> SheetsService:
@@ -138,22 +138,22 @@ def test_load_configuration_channel_id_none_when_empty() -> None:
     svc = _make_svc()
     ws = _make_ws()
     ws.get_all_records.return_value = [
-        {"setting_key": "schedule_channel_id", "setting_value": "", "setting_type": "string"},
+        {"setting_key": "announcement_channel_id", "setting_value": "", "setting_type": "string"},
     ]
     svc.spreadsheet.worksheet.return_value = ws
     config = svc.load_configuration()
-    assert config.schedule_channel_id is None
+    assert config.announcement_channel_id is None
 
 
 def test_load_configuration_channel_id_set_when_present() -> None:
     svc = _make_svc()
     ws = _make_ws()
     ws.get_all_records.return_value = [
-        {"setting_key": "schedule_channel_id", "setting_value": "999", "setting_type": "string"},
+        {"setting_key": "announcement_channel_id", "setting_value": "999", "setting_type": "string"},
     ]
     svc.spreadsheet.worksheet.return_value = ws
     config = svc.load_configuration()
-    assert config.schedule_channel_id == "999"
+    assert config.announcement_channel_id == "999"
 
 
 def test_load_configuration_malformed_json_skipped() -> None:
@@ -538,3 +538,69 @@ def test_load_configuration_meeting_pattern_empty_stays_none() -> None:
     svc.spreadsheet.worksheet.return_value = ws
     config = svc.load_configuration()
     assert config.meeting_pattern is None
+
+
+# ── _escape_cell (formula-injection defense) ──────────────────────────────────
+
+def test_escape_cell_passes_through_safe_text() -> None:
+    assert _escape_cell("Alice") == "Alice"
+    assert _escape_cell("user_42") == "user_42"
+    assert _escape_cell("") == ""
+
+
+def test_escape_cell_prefixes_dangerous_starts() -> None:
+    assert _escape_cell("=1+1") == "'=1+1"
+    assert _escape_cell("+SUM(A1)") == "'+SUM(A1)"
+    assert _escape_cell("-1") == "'-1"
+    assert _escape_cell("@import") == "'@import"
+    assert _escape_cell("\t=evil") == "'\t=evil"
+
+
+def test_upsert_schedule_row_escapes_malicious_username() -> None:
+    svc = _make_svc()
+    ws = _make_ws()
+    ws.col_values.return_value = ["date"]
+    svc.spreadsheet.worksheet.return_value = ws
+    event = EventDate(
+        date=date(2025, 6, 10),
+        host_discord_id="42",
+        host_username='=cmd|"/c calc"!A1',
+    )
+    svc.upsert_schedule_row(event)
+    row = ws.append_row.call_args[0][0]
+    assert row[2].startswith("'=")
+
+
+def test_append_pattern_escapes_malicious_description() -> None:
+    svc = _make_svc()
+    ws = _make_ws()
+    svc.spreadsheet.worksheet.return_value = ws
+    pattern = RecurringPattern(
+        pattern_id="p1",
+        host_discord_id="42",
+        host_username="Alice",
+        pattern_description="=HYPERLINK(\"http://evil\",\"x\")",
+        pattern_rule="{}",
+        start_date=date(2025, 6, 1),
+    )
+    svc.append_pattern(pattern)
+    row = ws.append_row.call_args[0][0]
+    assert row[3].startswith("'=")
+
+
+def test_append_audit_escapes_malicious_error_message() -> None:
+    svc = _make_svc()
+    ws = _make_ws()
+    svc.spreadsheet.worksheet.return_value = ws
+    entry = AuditEntry(
+        entry_id="e1",
+        timestamp=datetime(2025, 6, 1, 12, 0, tzinfo=timezone.utc),
+        action_type="VOLUNTEER",
+        user_discord_id="42",
+        outcome="failure",
+        error_message="=BAD()",
+    )
+    svc.append_audit(entry)
+    row = ws.append_row.call_args[0][0]
+    assert row[8].startswith("'=")
+

@@ -1,8 +1,29 @@
+import os
 from typing import FrozenSet, Iterable, Set
 
 import discord
 
-HARDCODED_OWNER_IDS: FrozenSet[int] = frozenset({166793917461692416})
+_DEFAULT_OWNER_IDS: FrozenSet[int] = frozenset({166793917461692416})
+
+
+def _load_hardcoded_owners() -> FrozenSet[int]:
+    """Resolve the bootstrap owner set, allowing env override for rotation."""
+    env = os.environ.get("BOT_OWNER_IDS")
+    if env is None:
+        return _DEFAULT_OWNER_IDS
+    ids: set[int] = set()
+    for raw in env.split(","):
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            ids.add(int(raw))
+        except ValueError:
+            continue
+    return frozenset(ids)
+
+
+HARDCODED_OWNER_IDS: FrozenSet[int] = _load_hardcoded_owners()
 
 
 def _user_role_ids(user: discord.abc.User) -> Set[int]:
@@ -45,6 +66,8 @@ def is_host(user: discord.abc.User, config) -> bool:
 
 def is_member(user: discord.abc.User, config) -> bool:
     if is_owner(user, config):
+        return True
+    if not config.member_role_ids:
         return True
     ids = _user_role_ids(user)
     return (

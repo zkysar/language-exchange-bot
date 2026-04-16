@@ -23,6 +23,17 @@ log = get_logger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r", "\n")
+
+
+def _escape_cell(value: str) -> str:
+    """Prefix `'` to neutralize Sheets formula injection from user-influenced text."""
+    if not value:
+        return value
+    if value[0] in _FORMULA_PREFIXES:
+        return "'" + value
+    return value
+
 SCHEDULE_HEADERS = [
     "date", "host_discord_id", "host_username", "recurring_pattern_id",
     "assigned_at", "assigned_by", "notes",
@@ -72,8 +83,7 @@ DEFAULT_CONFIG_ROWS = [
     ("host_role_ids", "[]", "json", "Discord role IDs for hosts"),
     ("admin_role_ids", "[]", "json", "Discord role IDs for admins"),
     ("owner_user_ids", "[166793917461692416]", "json", "Discord user IDs with full bot access (owner/setup)"),
-    ("schedule_channel_id", "", "string", "Discord channel ID for schedule posts"),
-    ("warnings_channel_id", "", "string", "Discord channel ID for warning posts"),
+    ("announcement_channel_id", "", "string", "Discord channel ID where the bot posts schedule announcements and host-needed warnings"),
     ("cache_ttl_seconds", "300", "integer", "Cache TTL in seconds"),
     ("max_batch_size", "100", "integer", "Max rows per batch write"),
 ]
@@ -375,10 +385,26 @@ class SheetsService:
                 elif key in ("daily_check_time", "daily_check_timezone", "meeting_pattern"):
                     if val:
                         setattr(config, key, val)
-                elif key in ("schedule_channel_id", "warnings_channel_id"):
-                    setattr(config, key, val or None)
+                elif key == "announcement_channel_id":
+                    if val:
+                        config.announcement_channel_id = val
+                elif key in ("warnings_channel_id", "schedule_channel_id"):
+                    pass  # handled in legacy fallback below
             except (ValueError, json.JSONDecodeError) as e:
                 log.warning("bad config %s=%r: %s", key, val, e)
+        # Re-scan rows for legacy channel keys if the new key was not set
+        if config.announcement_channel_id is None:
+            legacy_order = ("warnings_channel_id", "schedule_channel_id")
+            legacy: dict[str, str] = {}
+            for row in rows:
+                k = row.get("setting_key", "").strip()
+                v = str(row.get("setting_value", "")).strip()
+                if k in legacy_order and v:
+                    legacy[k] = v
+            for k in legacy_order:
+                if k in legacy:
+                    config.announcement_channel_id = legacy[k]
+                    break
         return config
 
     def update_configuration(self, key: str, value: str, type_: str = "json") -> None:
@@ -433,12 +459,12 @@ class SheetsService:
         ws = self._get_or_create("Schedule", SCHEDULE_HEADERS)
         row_values = [
             format_date(event.date),
-            event.host_discord_id or "",
-            event.host_username or "",
-            event.recurring_pattern_id or "",
+            _escape_cell(event.host_discord_id or ""),
+            _escape_cell(event.host_username or ""),
+            _escape_cell(event.recurring_pattern_id or ""),
             event.assigned_at.isoformat() if event.assigned_at else "",
-            event.assigned_by or "",
-            event.notes or "",
+            _escape_cell(event.assigned_by or ""),
+            _escape_cell(event.notes or ""),
         ]
         target = format_date(event.date)
         row_idx = self._find_schedule_row(ws, target)
@@ -509,11 +535,11 @@ class SheetsService:
     def append_pattern(self, pattern: RecurringPattern) -> None:
         ws = self._get_or_create("RecurringPatterns", PATTERN_HEADERS)
         ws.append_row([
-            pattern.pattern_id,
-            pattern.host_discord_id,
-            pattern.host_username,
-            pattern.pattern_description,
-            pattern.pattern_rule,
+            _escape_cell(pattern.pattern_id),
+            _escape_cell(pattern.host_discord_id),
+            _escape_cell(pattern.host_username),
+            _escape_cell(pattern.pattern_description),
+            _escape_cell(pattern.pattern_rule),
             format_date(pattern.start_date),
             format_date(pattern.end_date) if pattern.end_date else "",
             (pattern.created_at or datetime.now(timezone.utc)).isoformat(),
@@ -533,15 +559,15 @@ class SheetsService:
     def append_audit(self, entry: AuditEntry) -> None:
         ws = self._get_or_create("AuditLog", AUDIT_HEADERS)
         ws.append_row([
-            entry.entry_id,
+            _escape_cell(entry.entry_id),
             entry.timestamp.isoformat(),
-            entry.action_type,
-            entry.user_discord_id,
-            entry.target_user_discord_id or "",
+            _escape_cell(entry.action_type),
+            _escape_cell(entry.user_discord_id),
+            _escape_cell(entry.target_user_discord_id or ""),
             format_date(entry.event_date) if entry.event_date else "",
-            entry.recurring_pattern_id or "",
-            entry.outcome,
-            entry.error_message or "",
+            _escape_cell(entry.recurring_pattern_id or ""),
+            _escape_cell(entry.outcome),
+            _escape_cell(entry.error_message or ""),
             json.dumps(entry.metadata) if entry.metadata else "",
         ])
 

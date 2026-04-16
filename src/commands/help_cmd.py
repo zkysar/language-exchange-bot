@@ -30,19 +30,14 @@ COMMAND_HELP = {
     "schedule": "Use `/schedule` to view the next N weeks (default 4, max 12). "
                 "Pass `date:YYYY-MM-DD` to check a single date, or `user:@x` to filter "
                 "to a specific user's dates (hosts/admins can view others).",
-    "warnings": "Use `/warnings` to see any unassigned dates within the warning window. "
-                "Response is always private.",
     "hosting": "Use `/hosting action:signup date:<date>` to claim an open date, "
                "`/hosting action:signup pattern:'every 2nd Tuesday'` to set up a recurring pattern, "
                "`/hosting action:cancel date:<date>` to cancel a date, or "
                "`/hosting action:cancel pattern:<pattern>` to cancel a recurring pattern.",
-    "sheet": "Shows the URL of the backing Google Sheet. You need to be "
-             "granted view access to actually open it.",
-    "config": "Owner-only. Use `/config show` to see all settings, `/config set <setting> <value>` "
+    "config":"Owner-only. Use `/config show` to see all settings, `/config set <setting> <value>` "
               "to change a setting, or `/config roles <action> <bucket> [role]` to manage roles.",
     "setup": "Owner-only. Guided wizard that walks through all essential bot configuration.",
     "sync": "Admin-only. Forces a full resync of local cache from Google Sheets.",
-    "reset": "Admin-only. Displays the reset procedure and requires confirmation.",
 }
 
 HELP_TEXT = {None: "", **COMMAND_HELP}
@@ -50,7 +45,6 @@ HELP_TEXT = {None: "", **COMMAND_HELP}
 _MEMBER_CATEGORIES = {
     "View Schedule": [
         ("/schedule [weeks] [date] [user]", "See upcoming hosts"),
-        ("/warnings", "Dates that still need a host"),
     ],
 }
 
@@ -66,7 +60,6 @@ _HOST_CATEGORY = (
 
 _OTHER_CATEGORY = {
     "Other": [
-        ("/sheet", "Link to the Google Sheet"),
         ("/help [command]", "Detailed help for a command"),
     ],
 }
@@ -75,7 +68,6 @@ _ADMIN_CATEGORY = (
     "Admin",
     [
         ("/sync", "Force sync with Google Sheets"),
-        ("/reset", "Reset the database cache"),
     ],
 )
 
@@ -90,10 +82,9 @@ _OWNER_CATEGORY = (
 )
 
 _AUTOCOMPLETE_TIERS = [
-    (None, ["sheet"]),
-    (is_member, ["schedule", "warnings"]),
+    (is_member, ["schedule"]),
     (is_host, ["hosting"]),
-    (is_admin, ["sync", "reset"]),
+    (is_admin, ["sync"]),
     (is_owner, ["config", "setup"]),
 ]
 
@@ -114,7 +105,7 @@ def _visible_autocomplete(user: discord.abc.User, config) -> list[str]:
 def _build_embed(user: discord.abc.User, config) -> discord.Embed:
     embed = discord.Embed(
         title="Host Scheduler",
-        description=BOT_DESCRIPTION,
+        description=f"{BOT_DESCRIPTION}\n\n[Sheet]({sheet_url()}) • [GitHub]({GITHUB_URL})",
         color=0x5865F2,
     )
 
@@ -150,7 +141,7 @@ def _build_embed(user: discord.abc.User, config) -> discord.Embed:
         lines = "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
         embed.add_field(name=heading, value=lines, inline=False)
 
-    embed.set_footer(text=f"{_read_version()} · Sheet: {sheet_url()} • GitHub: {GITHUB_URL}")
+    embed.set_footer(text=_read_version())
     return embed
 
 
@@ -164,7 +155,7 @@ def build_command(cache: CacheService) -> app_commands.Command:
         if command:
             text = COMMAND_HELP.get(command)
             if text:
-                text = f"{text}\n\nSheet: {sheet_url()} • GitHub: {GITHUB_URL}"
+                text = f"{text}\n\n[Sheet]({sheet_url()}) • [GitHub]({GITHUB_URL})"
                 await interaction.response.send_message(text, ephemeral=True)
                 return
 

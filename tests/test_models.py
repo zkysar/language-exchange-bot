@@ -102,8 +102,7 @@ def test_configuration_default_independent_instances():
 
 def test_configuration_channel_ids_default_none():
     c = Configuration.default()
-    assert c.schedule_channel_id is None
-    assert c.warnings_channel_id is None
+    assert c.announcement_channel_id is None
 
 
 def test_configuration_meeting_pattern_default_none():
