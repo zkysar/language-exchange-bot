@@ -512,3 +512,29 @@ def test_append_audit_empty_metadata_writes_empty_string() -> None:
     svc.append_audit(entry)
     row = ws.append_row.call_args[0][0]
     assert row[9] == ""
+
+
+# ── load_configuration: meeting_pattern ───────────────────────────────────────
+
+def test_load_configuration_reads_meeting_pattern() -> None:
+    svc = _make_svc()
+    ws = _make_ws()
+    ws.get_all_records.return_value = [
+        {"setting_key": "meeting_pattern", "setting_value": "every wednesday",
+         "setting_type": "pattern", "description": "", "updated_at": ""},
+    ]
+    svc.spreadsheet.worksheet.return_value = ws
+    config = svc.load_configuration()
+    assert config.meeting_pattern == "every wednesday"
+
+
+def test_load_configuration_meeting_pattern_empty_stays_none() -> None:
+    svc = _make_svc()
+    ws = _make_ws()
+    ws.get_all_records.return_value = [
+        {"setting_key": "meeting_pattern", "setting_value": "",
+         "setting_type": "pattern", "description": "", "updated_at": ""},
+    ]
+    svc.spreadsheet.worksheet.return_value = ws
+    config = svc.load_configuration()
+    assert config.meeting_pattern is None
