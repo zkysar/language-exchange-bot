@@ -108,9 +108,9 @@ class SchedulerBot(discord.Client):
                 items = await self.warnings.check()
                 if not items:
                     return
-                channel_id = config.warnings_channel_id
+                channel_id = config.announcement_channel_id
                 if not channel_id:
-                    log.info("no warnings_channel_id configured; skipping post")
+                    log.info("no announcement_channel_id configured; skipping post")
                     return
                 channel = self.get_channel(int(channel_id))
                 if not channel:
