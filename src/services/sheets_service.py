@@ -72,8 +72,7 @@ DEFAULT_CONFIG_ROWS = [
     ("host_role_ids", "[]", "json", "Discord role IDs for hosts"),
     ("admin_role_ids", "[]", "json", "Discord role IDs for admins"),
     ("owner_user_ids", "[166793917461692416]", "json", "Discord user IDs with full bot access (owner/setup)"),
-    ("schedule_channel_id", "", "string", "Discord channel ID for schedule posts"),
-    ("warnings_channel_id", "", "string", "Discord channel ID for warning posts"),
+    ("announcement_channel_id", "", "string", "Discord channel ID where the bot posts schedule announcements and host-needed warnings"),
     ("cache_ttl_seconds", "300", "integer", "Cache TTL in seconds"),
     ("max_batch_size", "100", "integer", "Max rows per batch write"),
 ]
@@ -375,10 +374,25 @@ class SheetsService:
                 elif key in ("daily_check_time", "daily_check_timezone"):
                     if val:
                         setattr(config, key, val)
-                elif key in ("schedule_channel_id", "warnings_channel_id"):
-                    setattr(config, key, val or None)
+                elif key == "announcement_channel_id":
+                    if val:
+                        config.announcement_channel_id = val
+                elif key in ("warnings_channel_id", "schedule_channel_id"):
+                    pass  # handled in legacy fallback below
             except (ValueError, json.JSONDecodeError) as e:
                 log.warning("bad config %s=%r: %s", key, val, e)
+        if config.announcement_channel_id is None:
+            legacy_order = ("warnings_channel_id", "schedule_channel_id")
+            legacy: dict[str, str] = {}
+            for row in rows:
+                k = row.get("setting_key", "").strip()
+                v = str(row.get("setting_value", "")).strip()
+                if k in legacy_order and v:
+                    legacy[k] = v
+            for k in legacy_order:
+                if k in legacy:
+                    config.announcement_channel_id = legacy[k]
+                    break
         return config
 
     def update_configuration(self, key: str, value: str, type_: str = "json") -> None:
