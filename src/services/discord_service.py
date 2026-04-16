@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime, time as dt_time, timedelta
+from datetime import datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import discord
 from discord import app_commands
 from discord.ext import tasks
-from zoneinfo import ZoneInfo
 
 from src.commands import help_cmd as help_mod
 from src.commands import listdates as listdates_mod

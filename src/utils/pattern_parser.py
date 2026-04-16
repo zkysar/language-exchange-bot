@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import List, Optional
 
-from dateutil.relativedelta import relativedelta, MO, TU, WE, TH, FR, SA, SU
+from dateutil.relativedelta import FR, MO, SA, SU, TH, TU, WE, relativedelta
 
 WEEKDAYS = {
     "monday": MO, "tuesday": TU, "wednesday": WE, "thursday": TH,
