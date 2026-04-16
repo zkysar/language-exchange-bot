@@ -82,7 +82,7 @@ _OWNER_CATEGORY = (
 )
 
 _AUTOCOMPLETE_TIERS = [
-    (is_member, ["schedule", "warnings"]),
+    (is_member, ["schedule"]),
     (is_host, ["hosting"]),
     (is_admin, ["sync"]),
     (is_owner, ["config", "setup"]),
