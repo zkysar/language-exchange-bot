@@ -19,13 +19,15 @@ Discord role IDs), and `warnings_channel_id` / `schedule_channel_id`.
 
 ## Commands
 
-- `/schedule [weeks] [date]` — upcoming schedule
-- `/listdates [user]` — upcoming dates for a user
+- `/schedule [weeks] [date] [user]` — upcoming schedule; filter by date or user
 - `/warnings` — check unassigned dates (ephemeral)
-- `/volunteer date date:[date] [user]` — claim an open date
-- `/volunteer recurring pattern:[pattern] [user]` — recurring pattern
-- `/unvolunteer date date:[date] [user]` — cancel a date
-- `/unvolunteer recurring [user]` — cancel recurring pattern
+- `/hosting action:signup date:<date>` — claim an open date
+- `/hosting action:signup pattern:<pattern>` — set a recurring pattern (e.g. `every 2nd Tuesday`)
+- `/hosting action:cancel date:<date>` — cancel a specific date
+- `/hosting action:cancel pattern:<pattern>` — cancel a recurring pattern
+- `/sheet` — link to the backing Google Sheet
+- `/config show|set|roles` — (owner) view or change configuration
+- `/setup` — (owner) guided setup wizard
 - `/sync` — (admin) force resync
 - `/reset` — (admin) reset cache
 - `/help [command]` — help
