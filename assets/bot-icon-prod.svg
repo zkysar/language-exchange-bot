@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#C0392B"/>
+      <stop offset="100%" style="stop-color:#7B1010"/>
+    </linearGradient>
+    <linearGradient id="bubble-back" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1A3A6E"/>
+      <stop offset="100%" style="stop-color:#0D2147"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
+
+  <!-- Subtle radial glow in center -->
+  <circle cx="256" cy="256" r="180" fill="#E04030" opacity="0.18"/>
+
+  <!-- Back bubble (up-right) — Japan blue indigo -->
+  <rect x="195" y="110" width="230" height="145" rx="30" ry="30" fill="url(#bubble-back)" opacity="0.97"/>
+  <!-- Multilingual text -->
+  <text x="240" y="170" font-family="Arial, sans-serif" font-size="42" font-weight="bold" fill="#F5F0E8">Aa</text>
+  <text x="315" y="170" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="#C8960C">あ</text>
+  <rect x="240" y="192" width="130" height="8" rx="4" fill="#C8960C" opacity="0.5"/>
+  <rect x="240" y="212" width="85" height="8" rx="4" fill="#C8960C" opacity="0.3"/>
+
+  <!-- Front bubble (down-left) — washi paper ivory -->
+  <rect x="85" y="230" width="230" height="140" rx="30" ry="30" fill="#F5F0E8" opacity="0.97"/>
+  <!-- Typing dots — vermillion -->
+  <circle cx="165" cy="300" r="12" fill="#C0392B" opacity="0.5"/>
+  <circle cx="200" cy="300" r="12" fill="#C0392B" opacity="0.5"/>
+  <circle cx="235" cy="300" r="12" fill="#C0392B" opacity="0.5"/>
+</svg>
