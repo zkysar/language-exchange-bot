@@ -73,16 +73,14 @@ async def test_get_no_key_shows_all_settings(sheets: MagicMock, cache: MagicMock
     assert "Window weeks" in text
     assert "Daily check time" in text
     assert "Timezone" in text
-    assert "Schedule channel" in text
-    assert "Warnings channel" in text
+    assert "Announcement channel" in text
 
 
 @pytest.mark.asyncio
-async def test_get_no_key_unset_channels_display_not_set(
+async def test_get_no_key_unset_channel_displays_not_set(
     sheets: MagicMock, cache: MagicMock
 ) -> None:
-    cache.config.schedule_channel_id = None
-    cache.config.warnings_channel_id = None
+    cache.config.announcement_channel_id = None
     cmd = build_command(sheets, cache)
     interaction = make_interaction(guild=False)
     with patch("src.commands.config_cmd.is_owner", return_value=True):
@@ -95,7 +93,7 @@ async def test_get_no_key_unset_channels_display_not_set(
 async def test_get_no_key_set_channel_displays_mention(
     sheets: MagicMock, cache: MagicMock
 ) -> None:
-    cache.config.schedule_channel_id = "999888"
+    cache.config.announcement_channel_id = "999888"
     cmd = build_command(sheets, cache)
     interaction = make_interaction(guild=False)
     with patch("src.commands.config_cmd.is_owner", return_value=True):
@@ -232,11 +230,11 @@ async def test_set_channel_with_mention_writes(sheets: MagicMock, cache: MagicMo
         await cmd.callback(
             interaction,
             action=action_choice("set"),
-            key=key_choice("schedule_channel_id"),
+            key=key_choice("announcement_channel_id"),
             value="<#12345>",
         )
     sheets.update_configuration.assert_called_once_with(
-        "schedule_channel_id", "12345", type_="string"
+        "announcement_channel_id", "12345", type_="string"
     )
 
 
@@ -248,7 +246,7 @@ async def test_set_channel_invalid_value_rejected(sheets: MagicMock, cache: Magi
         await cmd.callback(
             interaction,
             action=action_choice("set"),
-            key=key_choice("schedule_channel_id"),
+            key=key_choice("announcement_channel_id"),
             value="not-a-channel",
         )
     sheets.update_configuration.assert_not_called()

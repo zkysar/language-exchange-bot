@@ -16,7 +16,7 @@ Multiple places describe the same behavior and they **drift**. When they disagre
 ## Project layout
 
 - `src/bot.py` — entry point
-- `src/commands/` — one file per slash command (`schedule.py`, `volunteer.py`, `warnings_cmd.py`, `help_cmd.py`, `config_cmd.py`, `setup_wizard.py`, `sync.py`, `reset.py`, `unvolunteer.py`, `sheet.py`)
+- `src/commands/` — one file per slash command (`schedule.py`, `hosting.py`, `help_cmd.py`, `config_cmd.py`, `setup_wizard.py`, `sync.py`, `sheet.py`)
 - `src/services/` — `sheets_service.py` (gspread I/O), `discord_service.py`, `cache_service.py`, `warning_service.py`
 - `src/utils/` — `auth.py` (role resolution), `date_parser.py`, `pattern_parser.py`, `config_meta.py`, `logger.py`
 - `src/models/models.py` — domain models
@@ -25,7 +25,7 @@ Multiple places describe the same behavior and they **drift**. When they disagre
 
 ## Known hotspot: command UX
 
-`/help`, `/schedule`, `/config`, and `/warnings` have been revised repeatedly in isolated PRs, each breaking the last. Before touching any of them, ask me whether we should scope to the one command or do a pass across all of them. Don't tweak command UX in a vacuum.
+`/help`, `/schedule`, and `/config` have been revised repeatedly in isolated PRs, each breaking the last. Before touching any of them, ask me whether we should scope to the one command or do a pass across all of them. Don't tweak command UX in a vacuum.
 
 ## Workflow preferences
 

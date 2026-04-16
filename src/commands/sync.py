@@ -6,6 +6,9 @@ from discord import app_commands
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService, make_audit
 from src.utils.auth import is_admin
+from src.utils.logger import get_logger
+
+log = get_logger(__name__)
 
 
 def build_command(sheets: SheetsService, cache: CacheService) -> app_commands.Command:
@@ -20,8 +23,11 @@ def build_command(sheets: SheetsService, cache: CacheService) -> app_commands.Co
         try:
             await cache.refresh(force=True)
             sheets.append_audit(make_audit("SYNC_FORCED", str(interaction.user.id)))
-        except Exception as e:
-            await interaction.followup.send(f"Sync failed: {e}", ephemeral=True)
+        except Exception:
+            log.exception("sync failed")
+            await interaction.followup.send(
+                "Sync failed. Please try again later.", ephemeral=True
+            )
             return
         await interaction.followup.send(
             f"Synced: {len(cache.all_events())} event(s) loaded.", ephemeral=True

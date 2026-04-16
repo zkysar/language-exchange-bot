@@ -57,12 +57,11 @@ class SetupWizardView(ui.View):
     def _build_channels_embed(self) -> discord.Embed:
         cfg = self.cache.config
         embed = discord.Embed(
-            title="Setup — Step 2/4: Channels",
-            description="Where should I post?\n\nSelect channels below, or skip to keep current values.",
+            title="Setup — Step 2/4: Channel",
+            description="Where should I post?\n\nSelect one channel below, or skip to keep the current value.",
             color=discord.Color.blue(),
         )
-        embed.add_field(name="Schedule channel", value=_channel_mention(cfg.schedule_channel_id))
-        embed.add_field(name="Warnings channel", value=_channel_mention(cfg.warnings_channel_id))
+        embed.add_field(name="Announcement channel", value=_channel_mention(cfg.announcement_channel_id))
         return embed
 
     def _build_schedule_embed(self) -> discord.Embed:
@@ -97,11 +96,8 @@ class SetupWizardView(ui.View):
             inline=False,
         )
         embed.add_field(
-            name="Channels",
-            value=(
-                f"Schedule: {_channel_mention(cfg.schedule_channel_id)}\n"
-                f"Warnings: {_channel_mention(cfg.warnings_channel_id)}"
-            ),
+            name="Channel",
+            value=f"Announcement: {_channel_mention(cfg.announcement_channel_id)}",
             inline=False,
         )
         embed.add_field(
@@ -128,8 +124,7 @@ class SetupWizardView(ui.View):
 
         elif self.step == 1:
             embed = self._build_channels_embed()
-            self.add_item(_ChannelSelectForSetting(self, "schedule_channel_id", placeholder="Select schedule channel..."))
-            self.add_item(_ChannelSelectForSetting(self, "warnings_channel_id", placeholder="Select warnings channel..."))
+            self.add_item(_ChannelSelectForSetting(self, "announcement_channel_id", placeholder="Select announcement channel..."))
             self.add_item(_NextButton(self, label="Next"))
 
         elif self.step == 2:
@@ -191,10 +186,16 @@ class _RoleSelectForBucket(ui.RoleSelect):
 
     async def callback(self, interaction: discord.Interaction) -> None:
         ids = [r.id for r in self.values]
-        self.wizard.sheets.update_configuration(
-            self._config_key, json.dumps(sorted(ids)), type_="json"
-        )
-        await self.wizard.cache.refresh(force=True)
+        try:
+            self.wizard.sheets.update_configuration(
+                self._config_key, json.dumps(sorted(ids)), type_="json"
+            )
+            await self.wizard.cache.refresh(force=True)
+        except Exception as e:
+            await interaction.response.send_message(
+                f"Failed to save roles: {e}", ephemeral=True
+            )
+            return
         names = ", ".join(r.name for r in self.values) or "*cleared*"
         await interaction.response.send_message(
             f"Set **{self.bucket}** roles to: {names}", ephemeral=True
@@ -215,10 +216,16 @@ class _ChannelSelectForSetting(ui.ChannelSelect):
     async def callback(self, interaction: discord.Interaction) -> None:
         if self.values:
             ch = self.values[0]
-            self.wizard.sheets.update_configuration(
-                self._config_key, str(ch.id), type_="string"
-            )
-            await self.wizard.cache.refresh(force=True)
+            try:
+                self.wizard.sheets.update_configuration(
+                    self._config_key, str(ch.id), type_="string"
+                )
+                await self.wizard.cache.refresh(force=True)
+            except Exception as e:
+                await interaction.response.send_message(
+                    f"Failed to save channel: {e}", ephemeral=True
+                )
+                return
             await interaction.response.send_message(
                 f"Set to {ch.mention}", ephemeral=True
             )
