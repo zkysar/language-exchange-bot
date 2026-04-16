@@ -24,8 +24,8 @@ def make_interaction(user_id: int = 1, guild: bool = True) -> MagicMock:
     return interaction
 
 
-def action_choice(value: str) -> app_commands.Choice[str]:
-    return app_commands.Choice(name=value, value=value)
+def action_choice(value: str) -> str:
+    return value
 
 
 def key_choice(value: str, label: str | None = None) -> app_commands.Choice[str]:
