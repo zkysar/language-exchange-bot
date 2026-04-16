@@ -12,7 +12,8 @@ from src.commands import help_cmd as help_mod
 from src.commands import listdates as listdates_mod
 from src.commands import reset as reset_mod
 from src.commands import schedule as schedule_mod
-from src.commands import setup as setup_mod
+from src.commands import config_cmd as config_mod
+from src.commands import setup_wizard as setup_wizard_mod
 from src.commands import sheet as sheet_mod
 from src.commands import sync as sync_mod
 from src.commands import unvolunteer as unvolunteer_mod
@@ -47,7 +48,8 @@ class SchedulerBot(discord.Client):
         self.tree.add_command(warnings_mod.build_command(self.cache, self.warnings))
         self.tree.add_command(sync_mod.build_command(self.sheets, self.cache))
         self.tree.add_command(reset_mod.build_command(self.sheets, self.cache))
-        self.tree.add_command(setup_mod.build_group(self.sheets, self.cache))
+        self.tree.add_command(config_mod.build_group(self.sheets, self.cache))
+        self.tree.add_command(setup_wizard_mod.build_command(self.sheets, self.cache))
         self.tree.add_command(sheet_mod.build_command())
         self.tree.add_command(help_mod.build_command())
 
