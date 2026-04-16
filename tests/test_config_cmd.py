@@ -29,9 +29,7 @@ def group(sheets, cache):
 def test_config_group_has_expected_subgroups(group):
     names = {cmd.name for cmd in group.commands}
     assert "show" in names
-    assert "warnings" in names
-    assert "schedule" in names
-    assert "channels" in names
+    assert "set" in names
     assert "roles" in names
 
 
