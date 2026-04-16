@@ -775,3 +775,15 @@ async def test_cancel_external_host_date_allowed(
     args, _ = interaction.followup.send.call_args
     assert "Jane" in args[0]
     assert "not on Discord" in args[0]
+
+
+@pytest.mark.asyncio
+async def test_signup_external_cancel_action_rejected(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    cmd = build_command(sheets, cache, warnings_svc)
+    interaction = make_interaction()
+    with patch("src.commands.hosting.is_host", return_value=True):
+        await cmd.callback(interaction, action=_CANCEL, date="2025-06-10", name="Jane")
+    _, kwargs = interaction.response.send_message.call_args
+    assert kwargs.get("ephemeral") is True

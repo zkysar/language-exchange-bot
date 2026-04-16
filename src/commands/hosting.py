@@ -126,6 +126,14 @@ def build_command(
                 "This command requires the host role.", ephemeral=True
             )
             return
+        act = action.value
+
+        if name and act == "cancel":
+            await interaction.response.send_message(
+                "Use the `user` parameter (or omit it) to cancel a date. `name` is only for assigning off-Discord hosts.",
+                ephemeral=True,
+            )
+            return
         if name and user:
             await interaction.response.send_message(
                 "Use `name` for off-Discord hosts, or `user` for Discord members — not both.",
@@ -155,7 +163,6 @@ def build_command(
             )
             return
 
-        act = action.value
         target = user or interaction.user
 
         if user is not None and user.id != interaction.user.id and not is_admin(
