@@ -46,6 +46,8 @@ def is_host(user: discord.abc.User, config) -> bool:
 def is_member(user: discord.abc.User, config) -> bool:
     if is_owner(user, config):
         return True
+    if not config.member_role_ids:
+        return True
     ids = _user_role_ids(user)
     return (
         _overlap(ids, config.admin_role_ids)
