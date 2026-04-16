@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from src.utils.config_meta import SETTINGS, validate_setting, SettingMeta
+from src.models.models import Configuration
 
 
 def test_all_settings_have_required_fields():
@@ -55,9 +56,6 @@ def test_validate_timezone_invalid():
 def test_validate_unknown_key():
     ok, val, err = validate_setting("nonexistent_key", "foo")
     assert ok is False
-
-
-from src.models.models import Configuration
 
 
 def test_configuration_has_single_announcement_channel_field():
