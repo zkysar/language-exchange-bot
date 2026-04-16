@@ -1,5 +1,5 @@
 app = "discord-host-scheduler"
-primary_region = "sea"
+primary_region = "sjc"
 
 [build]
 
