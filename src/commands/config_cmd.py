@@ -29,18 +29,21 @@ SETTING_CHOICES = [
 def build_group(sheets: SheetsService, cache: CacheService) -> app_commands.Group:
     group = app_commands.Group(name="config", description="View and change bot configuration")
 
-    async def _guard(interaction: discord.Interaction) -> bool:
+    async def _owner_check(interaction: discord.Interaction) -> bool:
         if not is_owner(interaction.user, cache.config):
-            await interaction.response.send_message("This command is owner-only.", ephemeral=True)
+            await interaction.response.send_message(
+                "This command is owner-only.", ephemeral=True
+            )
             return False
         return True
+
+    # Apply uniformly to every subcommand so a future subcommand cannot bypass auth.
+    group.interaction_check = _owner_check
 
     # ── /config show ──
 
     @group.command(name="show", description="Display all current configuration")
     async def config_show(interaction: discord.Interaction) -> None:
-        if not await _guard(interaction):
-            return
         cfg = cache.config
         guild = interaction.guild
 
@@ -93,8 +96,6 @@ def build_group(sheets: SheetsService, cache: CacheService) -> app_commands.Grou
         setting: app_commands.Choice[str],
         value: str,
     ) -> None:
-        if not await _guard(interaction):
-            return
         await interaction.response.defer(ephemeral=True)
 
         key = setting.value
@@ -169,8 +170,6 @@ def build_group(sheets: SheetsService, cache: CacheService) -> app_commands.Grou
         bucket: app_commands.Choice[str],
         role: discord.Role | None = None,
     ) -> None:
-        if not await _guard(interaction):
-            return
         await interaction.response.defer(ephemeral=True)
 
         act = action.value

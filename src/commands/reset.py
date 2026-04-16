@@ -6,6 +6,9 @@ from discord import app_commands
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService, make_audit
 from src.utils.auth import is_admin
+from src.utils.logger import get_logger
+
+log = get_logger(__name__)
 
 INSTRUCTIONS = (
     "**Database Reset Procedure**\n\n"
@@ -33,8 +36,11 @@ class _ConfirmReset(discord.ui.View):
             self.cache.invalidate()
             await self.cache.refresh(force=True)
             self.sheets.append_audit(make_audit("RESET", str(self.invoker.id)))
-        except Exception as e:
-            await interaction.followup.send(f"Reset failed: {e}", ephemeral=True)
+        except Exception:
+            log.exception("reset failed")
+            await interaction.followup.send(
+                "Reset failed. Please try again later.", ephemeral=True
+            )
             return
         self.stop()
         await interaction.followup.send("✅ Reset complete.", ephemeral=True)
