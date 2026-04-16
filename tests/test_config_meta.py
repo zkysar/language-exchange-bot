@@ -75,3 +75,4 @@ def test_config_meta_has_single_announcement_channel_entry():
     assert meta.setting_type == "channel"
     assert meta.config_key == "announcement_channel_id"
     assert meta.sheets_type == "string"
+    assert meta.label == "Announcement channel"
