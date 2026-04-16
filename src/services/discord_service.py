@@ -8,10 +8,10 @@ import discord
 from discord import app_commands
 from discord.ext import tasks
 
+from src.commands import config_cmd as config_mod
 from src.commands import help_cmd as help_mod
 from src.commands import reset as reset_mod
 from src.commands import schedule as schedule_mod
-from src.commands import config_cmd as config_mod
 from src.commands import setup_wizard as setup_wizard_mod
 from src.commands import sheet as sheet_mod
 from src.commands import sync as sync_mod
