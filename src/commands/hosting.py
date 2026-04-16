@@ -108,7 +108,8 @@ def build_command(
         action="What to do",
         date="A specific date",
         pattern="Recurring pattern (e.g. 'every 2nd Tuesday')",
-        user="User (defaults to you)",
+        user="Discord user (defaults to you)",
+        name="Off-Discord host name (use instead of user for non-Discord participants)",
     )
     @app_commands.choices(action=_ACTION_CHOICES)
     @app_commands.autocomplete(date=date_autocomplete, pattern=pattern_autocomplete)
@@ -118,10 +119,29 @@ def build_command(
         date: Optional[str] = None,
         pattern: Optional[str] = None,
         user: Optional[discord.User] = None,
+        name: Optional[str] = None,
     ) -> None:
         if not is_host(interaction.user, cache.config):
             await interaction.response.send_message(
                 "This command requires the host role.", ephemeral=True
+            )
+            return
+        if name and user:
+            await interaction.response.send_message(
+                "Use `name` for off-Discord hosts, or `user` for Discord members — not both.",
+                ephemeral=True,
+            )
+            return
+        if name and pattern:
+            await interaction.response.send_message(
+                "Recurring patterns are not supported for off-Discord hosts. Provide a `date` instead.",
+                ephemeral=True,
+            )
+            return
+        if name and not date:
+            await interaction.response.send_message(
+                "Provide a `date` when assigning an off-Discord host.",
+                ephemeral=True,
             )
             return
         if date and pattern:
@@ -129,7 +149,7 @@ def build_command(
                 "Provide either a date or a pattern, not both.", ephemeral=True
             )
             return
-        if not date and not pattern:
+        if not date and not pattern and not name:
             await interaction.response.send_message(
                 "Provide a date or a pattern.", ephemeral=True
             )
@@ -147,7 +167,9 @@ def build_command(
             )
             return
 
-        if act == "signup" and date:
+        if act == "signup" and name and date:
+            await _signup_external(interaction, sheets, cache, name, date)
+        elif act == "signup" and date:
             await _signup_date(interaction, sheets, cache, target, date)
         elif act == "signup" and pattern:
             await _signup_recurring(interaction, sheets, cache, target, pattern)
@@ -256,6 +278,75 @@ async def _signup_date(
 
     await interaction.followup.send(
         f"<@{target.id}> is now hosting on **{format_display(d)}**."
+    )
+
+
+async def _signup_external(
+    interaction: discord.Interaction,
+    sheets: SheetsService,
+    cache: CacheService,
+    name: str,
+    date_str: str,
+) -> None:
+    try:
+        d = parse_iso_date(date_str)
+    except ValueError:
+        await interaction.response.send_message(
+            f"Invalid date `{date_str}`. Pick one from the autocomplete list.",
+            ephemeral=True,
+        )
+        return
+    if d < today_la():
+        await interaction.response.send_message(
+            "Cannot sign up for a past date.", ephemeral=True
+        )
+        return
+
+    await interaction.response.defer()
+    async with sheets.write_lock:
+        loop = asyncio.get_running_loop()
+        await cache.refresh(force=True)
+        existing = cache.get_event(d)
+        if existing and existing.is_assigned:
+            if existing.host_discord_id:
+                who = f"<@{existing.host_discord_id}>"
+            else:
+                who = f"{existing.host_username} (not on Discord)"
+            await interaction.followup.send(
+                f"**{format_display(d)}** is already assigned to {who}."
+            )
+            return
+        now = datetime.now(timezone.utc)
+        event = EventDate(
+            date=d,
+            host_discord_id="",
+            host_username=name,
+            assigned_at=now,
+            assigned_by=str(interaction.user.id),
+        )
+        try:
+            await loop.run_in_executor(None, sheets.upsert_schedule_row, event)
+            await loop.run_in_executor(
+                None,
+                sheets.append_audit,
+                make_audit(
+                    "VOLUNTEER_EXTERNAL",
+                    str(interaction.user.id),
+                    event_date=d,
+                    metadata={"external_name": name},
+                ),
+            )
+            cache.upsert_event(event)
+        except Exception:
+            log.exception("external volunteer write failed")
+            await interaction.followup.send(
+                "Failed to update schedule. Please try again later."
+            )
+            return
+
+    await interaction.followup.send(
+        f"**{name}** (not on Discord) is now hosting on **{format_display(d)}**.\n"
+        f"> If this person is on Discord, use the `user` parameter instead."
     )
 
 
@@ -453,7 +544,7 @@ async def _cancel_date(
         if not ev or not ev.is_assigned:
             await interaction.followup.send(f"No one is scheduled on **{format_display(d)}**.")
             return
-        if str(ev.host_discord_id) != str(target.id):
+        if ev.host_discord_id and str(ev.host_discord_id) != str(target.id):
             await interaction.followup.send(
                 f"<@{target.id}> is not assigned on **{format_display(d)}** "
                 f"(assigned: <@{ev.host_discord_id}>)."
@@ -479,7 +570,11 @@ async def _cancel_date(
             )
             return
 
-    msg = f"Removed <@{target.id}> from **{format_display(d)}**."
+    if ev.host_discord_id:
+        removed = f"<@{ev.host_discord_id}>"
+    else:
+        removed = f"**{ev.host_username}** (not on Discord)"
+    msg = f"Removed {removed} from **{format_display(d)}**."
     try:
         items = await warnings.check()
         urgent = [w for w in items if w.event_date == d and w.severity == "urgent"]

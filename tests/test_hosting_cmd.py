@@ -667,3 +667,111 @@ async def test_signup_recurring_aligned_proceeds_to_preview(
     interaction.response.send_message.assert_awaited_once()
     _, kwargs = interaction.response.send_message.call_args
     assert isinstance(kwargs.get("view"), _ConfirmView)
+
+
+# ── external host signup ──────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_signup_external_with_user_rejected(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    cmd = build_command(sheets, cache, warnings_svc)
+    interaction = make_interaction()
+    other = MagicMock(spec=discord.User)
+    other.id = 2
+    with patch("src.commands.hosting.is_host", return_value=True):
+        await cmd.callback(
+            interaction, action=_SIGNUP, date="2025-06-10", name="Jane", user=other
+        )
+    _, kwargs = interaction.response.send_message.call_args
+    assert kwargs.get("ephemeral") is True
+
+
+@pytest.mark.asyncio
+async def test_signup_external_with_pattern_rejected(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    cmd = build_command(sheets, cache, warnings_svc)
+    interaction = make_interaction()
+    with patch("src.commands.hosting.is_host", return_value=True):
+        await cmd.callback(
+            interaction, action=_SIGNUP, pattern="every monday", name="Jane"
+        )
+    _, kwargs = interaction.response.send_message.call_args
+    assert kwargs.get("ephemeral") is True
+
+
+@pytest.mark.asyncio
+async def test_signup_external_without_date_rejected(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    cmd = build_command(sheets, cache, warnings_svc)
+    interaction = make_interaction()
+    with patch("src.commands.hosting.is_host", return_value=True):
+        await cmd.callback(interaction, action=_SIGNUP, name="Jane")
+    _, kwargs = interaction.response.send_message.call_args
+    assert kwargs.get("ephemeral") is True
+
+
+@pytest.mark.asyncio
+async def test_signup_external_happy_path(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    cache.get_event.return_value = None
+    cmd = build_command(sheets, cache, warnings_svc)
+    interaction = make_interaction(user_id=1)
+    with (
+        patch("src.commands.hosting.is_host", return_value=True),
+        patch("src.commands.hosting.today_la", return_value=date(2025, 6, 1)),
+    ):
+        await cmd.callback(
+            interaction, action=_SIGNUP, date="2025-06-10", name="Jane"
+        )
+    sheets.upsert_schedule_row.assert_called_once()
+    call_args = sheets.upsert_schedule_row.call_args[0][0]
+    assert call_args.host_discord_id == ""
+    assert call_args.host_username == "Jane"
+    cache.upsert_event.assert_called_once()
+    interaction.followup.send.assert_awaited_once()
+    args, _ = interaction.followup.send.call_args
+    assert "Jane" in args[0]
+    assert "not on Discord" in args[0]
+    assert "user" in args[0].lower()  # hint present
+
+
+@pytest.mark.asyncio
+async def test_signup_external_already_assigned_sends_error(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    ev = EventDate(date=date(2025, 6, 10), host_discord_id="99")
+    cache.get_event.return_value = ev
+    cmd = build_command(sheets, cache, warnings_svc)
+    interaction = make_interaction(user_id=1)
+    with (
+        patch("src.commands.hosting.is_host", return_value=True),
+        patch("src.commands.hosting.today_la", return_value=date(2025, 6, 1)),
+    ):
+        await cmd.callback(
+            interaction, action=_SIGNUP, date="2025-06-10", name="Jane"
+        )
+    interaction.followup.send.assert_awaited_once()
+    args, _ = interaction.followup.send.call_args
+    assert "already" in args[0].lower() or "assigned" in args[0].lower()
+
+
+@pytest.mark.asyncio
+async def test_cancel_external_host_date_allowed(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    ev = EventDate(date=date(2025, 6, 10), host_discord_id="", host_username="Jane")
+    cache.get_event.return_value = ev
+    cmd = build_command(sheets, cache, warnings_svc)
+    interaction = make_interaction(user_id=1)
+    with patch("src.commands.hosting.is_host", return_value=True):
+        await cmd.callback(interaction, action=_CANCEL, date="2025-06-10")
+    sheets.clear_schedule_assignment.assert_called_once()
+    cache.remove_event_assignment.assert_called_once()
+    interaction.followup.send.assert_awaited_once()
+    args, _ = interaction.followup.send.call_args
+    assert "Jane" in args[0]
+    assert "not on Discord" in args[0]
