@@ -21,6 +21,11 @@ from src.utils.date_parser import (
     today_la,
 )
 from src.utils.logger import get_logger
+from src.utils.meeting_schedule import (
+    align_matches_schedule,
+    generate_meeting_dates,
+    is_meeting_day,
+)
 from src.utils.pattern_parser import generate_dates, parse_pattern
 
 log = get_logger(__name__)
@@ -162,13 +167,7 @@ async def _signup_date_autocomplete(
     horizon = today + timedelta(weeks=12)
     events = {e.date: e for e in cache.all_events()}
 
-    meeting_dates = None
-    if cache.config.meeting_pattern:
-        try:
-            parsed = parse_pattern(cache.config.meeting_pattern)
-            meeting_dates = set(generate_dates(parsed, today, months=3))
-        except ValueError:
-            pass  # malformed config — fall back to all dates
+    meeting_dates = generate_meeting_dates(cache.config, today, horizon)
 
     choices: List[app_commands.Choice[str]] = []
     for i in range((horizon - today).days + 1):
@@ -205,6 +204,13 @@ async def _signup_date(
     if d < today_la():
         await interaction.response.send_message(
             "Cannot sign up for a past date.", ephemeral=True
+        )
+        return
+    if not is_meeting_day(d, cache.config):
+        await interaction.response.send_message(
+            f"**{format_display(d)}** is not a meeting day. "
+            f"Exchange meets: `{cache.config.meeting_schedule}`.",
+            ephemeral=True,
         )
         return
 
@@ -271,6 +277,10 @@ async def _signup_recurring(
         return
 
     start = today_la() + timedelta(days=1)
+    ok, reason = align_matches_schedule(pattern_str, cache.config, start)
+    if not ok:
+        await interaction.response.send_message(reason, ephemeral=True)
+        return
     dates = generate_dates(parsed, start, months=3)
     if not dates:
         await interaction.response.send_message(

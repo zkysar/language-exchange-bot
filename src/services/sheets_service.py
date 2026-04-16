@@ -367,6 +367,7 @@ class SheetsService:
     def load_configuration(self) -> Configuration:
         ws = self._get_or_create("Configuration", CONFIG_HEADERS)
         rows = ws.get_all_records()
+        self._migrate_meeting_pattern_key(ws, rows)
         config = Configuration.default()
         for row in rows:
             key = row.get("setting_key", "").strip()
@@ -381,7 +382,7 @@ class SheetsService:
                 elif key in ("host_role_ids", "admin_role_ids", "owner_user_ids"):
                     parsed = json.loads(val) if val else []
                     setattr(config, key, [int(x) for x in parsed] if parsed else [])
-                elif key in ("daily_check_time", "daily_check_timezone", "meeting_pattern"):
+                elif key in ("daily_check_time", "daily_check_timezone", "meeting_schedule"):
                     if val:
                         setattr(config, key, val)
                 elif key == "announcement_channel_id":
@@ -405,6 +406,42 @@ class SheetsService:
                     config.announcement_channel_id = legacy[k]
                     break
         return config
+
+    def _migrate_meeting_pattern_key(
+        self, ws: gspread.Worksheet, rows: List[Dict[str, Any]]
+    ) -> None:
+        """One-time migration: legacy `meeting_pattern` -> `meeting_schedule`.
+
+        If the sheet has the old key but not the new one, append a new row
+        with the preserved value and rename the old key cell to
+        `meeting_pattern_deprecated` so it's visible but inert. Idempotent.
+
+        Mutates `rows` in place so the caller's loop sees the new key.
+        """
+        old_value: Optional[str] = None
+        has_new = False
+        old_row_index: Optional[int] = None
+        for idx, row in enumerate(rows):
+            key = str(row.get("setting_key", "")).strip()
+            if key == "meeting_pattern":
+                old_value = str(row.get("setting_value", "")).strip()
+                old_row_index = idx
+            elif key == "meeting_schedule":
+                has_new = True
+        if has_new or old_row_index is None:
+            return
+        self.update_configuration(
+            "meeting_schedule", old_value or "", type_="string"
+        )
+        # Rename the legacy key cell (col A) to _deprecated.
+        col_values = ws.col_values(1)
+        for sheet_row_idx, val in enumerate(col_values[1:], start=2):
+            if val.strip() == "meeting_pattern":
+                ws.update(f"A{sheet_row_idx}", [["meeting_pattern_deprecated"]])
+                break
+        # Reflect the rename in-memory so the caller's loop uses the new key.
+        rows[old_row_index]["setting_key"] = "meeting_schedule"
+        log.info("migrated meeting_pattern -> meeting_schedule (value=%r)", old_value)
 
     def update_configuration(self, key: str, value: str, type_: str = "json") -> None:
         ws = self._get_or_create("Configuration", CONFIG_HEADERS)

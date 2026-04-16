@@ -156,3 +156,71 @@ async def test_schedule_no_matches_for_target_user(cache: MagicMock) -> None:
         await cmd.callback(interaction, weeks=4, date=None, user=target)
     args, _ = interaction.response.send_message.call_args
     assert "no upcoming" in args[0].lower()
+
+
+# ── meeting_schedule filters the default view ─────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_schedule_hides_non_meeting_days_when_schedule_set(
+    cache: MagicMock,
+) -> None:
+    cache.config.meeting_schedule = "every wednesday"
+    cache.all_events = MagicMock(return_value=[])
+    cmd = build_command(cache)
+    interaction = make_interaction()
+    with (
+        patch("src.commands.schedule.is_host", return_value=True),
+        # April 2026: Wednesdays are 1, 8, 15, 22, 29
+        patch("src.commands.schedule.today_la", return_value=date(2026, 4, 1)),
+    ):
+        await cmd.callback(interaction, weeks=4, date=None, user=None)
+    args, _ = interaction.response.send_message.call_args
+    text = args[0]
+    day_lines = [line for line in text.split("\n") if line.startswith(("✅ ", "❓ "))]
+    assert len(day_lines) > 0
+    # Every day line should be a Wednesday
+    for line in day_lines:
+        assert "Wed" in line, f"non-Wednesday line leaked: {line!r}"
+    # Tuesdays and Thursdays from April must not appear
+    assert "Tue, Apr" not in text
+    assert "Thu, Apr" not in text
+
+
+@pytest.mark.asyncio
+async def test_schedule_shows_all_days_when_schedule_unset(
+    cache: MagicMock,
+) -> None:
+    cache.config.meeting_schedule = None
+    cache.all_events = MagicMock(return_value=[])
+    cmd = build_command(cache)
+    interaction = make_interaction()
+    with (
+        patch("src.commands.schedule.is_host", return_value=True),
+        patch("src.commands.schedule.today_la", return_value=date(2026, 4, 1)),
+    ):
+        await cmd.callback(interaction, weeks=1, date=None, user=None)
+    args, _ = interaction.response.send_message.call_args
+    text = args[0]
+    # 1 week = 8 days, all should appear (any Tue/Wed/Thu all present)
+    lines = [line for line in text.split("\n") if line.startswith(("✅ ", "❓ "))]
+    assert len(lines) >= 7  # at minimum a full week
+
+
+@pytest.mark.asyncio
+async def test_schedule_malformed_schedule_falls_back_to_all_days(
+    cache: MagicMock,
+) -> None:
+    cache.config.meeting_schedule = "absolute garbage"
+    cache.all_events = MagicMock(return_value=[])
+    cmd = build_command(cache)
+    interaction = make_interaction()
+    with (
+        patch("src.commands.schedule.is_host", return_value=True),
+        patch("src.commands.schedule.today_la", return_value=date(2026, 4, 1)),
+    ):
+        await cmd.callback(interaction, weeks=1, date=None, user=None)
+    args, _ = interaction.response.send_message.call_args
+    text = args[0]
+    lines = [line for line in text.split("\n") if line.startswith(("✅ ", "❓ "))]
+    # Fall back to showing all days rather than hiding everything
+    assert len(lines) >= 7

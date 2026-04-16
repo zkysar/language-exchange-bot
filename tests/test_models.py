@@ -104,11 +104,16 @@ def test_configuration_channel_ids_default_none():
     assert c.announcement_channel_id is None
 
 
-def test_configuration_meeting_pattern_default_none():
+def test_configuration_meeting_schedule_default_none():
     cfg = Configuration.default()
-    assert cfg.meeting_pattern is None
+    assert cfg.meeting_schedule is None
 
 
-def test_configuration_meeting_pattern_can_be_set():
-    cfg = Configuration(meeting_pattern="every wednesday")
-    assert cfg.meeting_pattern == "every wednesday"
+def test_configuration_meeting_schedule_can_be_set():
+    cfg = Configuration(meeting_schedule="every wednesday")
+    assert cfg.meeting_schedule == "every wednesday"
+
+
+def test_configuration_no_legacy_meeting_pattern_attribute():
+    cfg = Configuration.default()
+    assert not hasattr(cfg, "meeting_pattern")

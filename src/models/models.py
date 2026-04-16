@@ -65,7 +65,7 @@ class Configuration:
     admin_role_ids: List[int] = field(default_factory=list)
     owner_user_ids: List[int] = field(default_factory=list)
     announcement_channel_id: Optional[str] = None
-    meeting_pattern: Optional[str] = None
+    meeting_schedule: Optional[str] = None
     cache_ttl_seconds: int = 300
     max_batch_size: int = 100
 

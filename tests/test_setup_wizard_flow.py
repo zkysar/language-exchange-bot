@@ -9,7 +9,7 @@ from src.commands.setup_wizard import (
     SetupWizardView,
     _ChannelSelectForSetting,
     _DoneButton,
-    _MeetingPatternModal,
+    _MeetingScheduleModal,
     _NextButton,
     _RoleSelectForBucket,
     _ScheduleModal,
@@ -262,59 +262,73 @@ async def test_schedule_modal_multiple_errors_collected(
     sheets.update_configuration.assert_not_called()
 
 
-# ── _MeetingPatternModal ──────────────────────────────────────────────────────
+# ── _MeetingScheduleModal ─────────────────────────────────────────────────────
 
-def test_meeting_pattern_modal_exists() -> None:
-    assert issubclass(_MeetingPatternModal, discord.ui.Modal)
+def test_meeting_schedule_modal_exists() -> None:
+    assert issubclass(_MeetingScheduleModal, discord.ui.Modal)
 
 
 @pytest.mark.asyncio
-async def test_step3_embed_shows_meeting_pattern(sheets: MagicMock, cache: MagicMock) -> None:
+async def test_step3_embed_shows_meeting_schedule(sheets: MagicMock, cache: MagicMock) -> None:
     orig_interaction = make_interaction()
     view = SetupWizardView(sheets, cache, orig_interaction)
-    view.cache.config.meeting_pattern = "every wednesday"
+    view.cache.config.meeting_schedule = "every wednesday"
     embed = view._build_schedule_embed()
     field_values = [f.value for f in embed.fields]
     assert any("every wednesday" in v for v in field_values)
 
 
 @pytest.mark.asyncio
-async def test_step3_embed_shows_not_set_when_no_pattern(sheets: MagicMock, cache: MagicMock) -> None:
+async def test_step3_embed_shows_not_set_when_no_schedule(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
     orig_interaction = make_interaction()
     view = SetupWizardView(sheets, cache, orig_interaction)
-    view.cache.config.meeting_pattern = None
+    view.cache.config.meeting_schedule = None
     embed = view._build_schedule_embed()
     field_values = [f.value for f in embed.fields]
     assert any("not set" in v.lower() for v in field_values)
 
 
 @pytest.mark.asyncio
-async def test_meeting_pattern_modal_valid_pattern_writes_and_refreshes(
+async def test_step3_embed_unset_does_not_mention_all_dates_shown(
     sheets: MagicMock, cache: MagicMock
 ) -> None:
     orig_interaction = make_interaction()
     view = SetupWizardView(sheets, cache, orig_interaction)
-    modal = _MeetingPatternModal(view)
-    modal.pattern._value = "every wednesday"
+    view.cache.config.meeting_schedule = None
+    embed = view._build_schedule_embed()
+    field_values = [f.value for f in embed.fields]
+    assert not any("all dates shown" in v.lower() for v in field_values)
+
+
+@pytest.mark.asyncio
+async def test_meeting_schedule_modal_valid_writes_and_refreshes(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
+    orig_interaction = make_interaction()
+    view = SetupWizardView(sheets, cache, orig_interaction)
+    modal = _MeetingScheduleModal(view)
+    modal.schedule._value = "every wednesday"
     interaction = make_interaction()
     await modal.on_submit(interaction)
     sheets.update_configuration.assert_called_once_with(
-        "meeting_pattern", "every wednesday", type_="string"
+        "meeting_schedule", "every wednesday", type_="string"
     )
     cache.refresh.assert_awaited_once_with(force=True)
 
 
 @pytest.mark.asyncio
-async def test_meeting_pattern_modal_empty_pattern_clears(
+async def test_meeting_schedule_modal_empty_clears(
     sheets: MagicMock, cache: MagicMock
 ) -> None:
     orig_interaction = make_interaction()
     view = SetupWizardView(sheets, cache, orig_interaction)
-    modal = _MeetingPatternModal(view)
-    modal.pattern._value = ""
+    modal = _MeetingScheduleModal(view)
+    modal.schedule._value = ""
     interaction = make_interaction()
     await modal.on_submit(interaction)
     sheets.update_configuration.assert_called_once_with(
-        "meeting_pattern", "", type_="string"
+        "meeting_schedule", "", type_="string"
     )
     cache.refresh.assert_awaited_once_with(force=True)

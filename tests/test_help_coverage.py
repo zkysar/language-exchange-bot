@@ -100,3 +100,15 @@ def test_no_warning_when_configured() -> None:
     field_names = [f.name for f in embed.fields]
     assert "Not configured" not in field_names
     assert "Members — View Schedule" in field_names
+
+
+def test_hosting_help_mentions_meeting_schedule() -> None:
+    """Hosts need to discover that signups are gated by the meeting_schedule config."""
+    text = help_mod.COMMAND_HELP["hosting"]
+    assert "meeting_schedule" in text or "meeting schedule" in text.lower()
+
+
+def test_config_help_mentions_meeting_schedule() -> None:
+    """Owners reading /help config should see meeting_schedule is configurable."""
+    text = help_mod.COMMAND_HELP["config"]
+    assert "meeting_schedule" in text or "meeting schedule" in text.lower()

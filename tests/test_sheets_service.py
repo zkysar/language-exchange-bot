@@ -514,30 +514,99 @@ def test_append_audit_empty_metadata_writes_empty_string() -> None:
     assert row[9] == ""
 
 
-# ── load_configuration: meeting_pattern ───────────────────────────────────────
+# ── load_configuration: meeting_schedule ──────────────────────────────────────
 
-def test_load_configuration_reads_meeting_pattern() -> None:
+def test_load_configuration_reads_meeting_schedule() -> None:
+    svc = _make_svc()
+    ws = _make_ws()
+    ws.get_all_records.return_value = [
+        {"setting_key": "meeting_schedule", "setting_value": "every wednesday",
+         "setting_type": "pattern", "description": "", "updated_at": ""},
+    ]
+    svc.spreadsheet.worksheet.return_value = ws
+    config = svc.load_configuration()
+    assert config.meeting_schedule == "every wednesday"
+
+
+def test_load_configuration_meeting_schedule_empty_stays_none() -> None:
+    svc = _make_svc()
+    ws = _make_ws()
+    ws.get_all_records.return_value = [
+        {"setting_key": "meeting_schedule", "setting_value": "",
+         "setting_type": "pattern", "description": "", "updated_at": ""},
+    ]
+    svc.spreadsheet.worksheet.return_value = ws
+    config = svc.load_configuration()
+    assert config.meeting_schedule is None
+
+
+# ── meeting_pattern -> meeting_schedule migration ─────────────────────────────
+
+def test_load_configuration_migrates_old_meeting_pattern_key() -> None:
+    """If only the legacy `meeting_pattern` key exists, migrate to `meeting_schedule`."""
     svc = _make_svc()
     ws = _make_ws()
     ws.get_all_records.return_value = [
         {"setting_key": "meeting_pattern", "setting_value": "every wednesday",
          "setting_type": "pattern", "description": "", "updated_at": ""},
     ]
+    ws.get_all_values.return_value = [
+        ["setting_key", "setting_value", "setting_type", "description", "updated_at"],
+        ["meeting_pattern", "every wednesday", "pattern", "", ""],
+    ]
+    # col_values for the A column (setting_key) — used by the in-place rename
+    ws.col_values.return_value = ["setting_key", "meeting_pattern"]
     svc.spreadsheet.worksheet.return_value = ws
     config = svc.load_configuration()
-    assert config.meeting_pattern == "every wednesday"
+    # Config reflects the old value (migration preserves data)
+    assert config.meeting_schedule == "every wednesday"
+    # The old cell was renamed to `meeting_pattern_deprecated`
+    # AND a new row with key `meeting_schedule` was added
+    update_calls = ws.update.call_args_list
+    append_calls = ws.append_row.call_args_list
+    # Either: rename happened via ws.update on the A cell, OR a new row was
+    # appended. We expect BOTH: append the new row AND rename the old cell.
+    wrote_new_row = any(
+        call.args[0][0] == "meeting_schedule" if call.args else False
+        for call in append_calls
+    )
+    renamed_old = any(
+        "meeting_pattern_deprecated" in str(call.args)
+        for call in update_calls
+    )
+    assert wrote_new_row, "should append a new meeting_schedule row"
+    assert renamed_old, "should rename old meeting_pattern cell to *_deprecated"
 
 
-def test_load_configuration_meeting_pattern_empty_stays_none() -> None:
+def test_load_configuration_no_migration_when_new_key_exists() -> None:
+    """If `meeting_schedule` already exists, do not touch the legacy key."""
     svc = _make_svc()
     ws = _make_ws()
     ws.get_all_records.return_value = [
-        {"setting_key": "meeting_pattern", "setting_value": "",
+        {"setting_key": "meeting_pattern", "setting_value": "every wednesday",
+         "setting_type": "pattern", "description": "", "updated_at": ""},
+        {"setting_key": "meeting_schedule", "setting_value": "every thursday",
          "setting_type": "pattern", "description": "", "updated_at": ""},
     ]
     svc.spreadsheet.worksheet.return_value = ws
     config = svc.load_configuration()
-    assert config.meeting_pattern is None
+    # The new key wins; legacy is ignored
+    assert config.meeting_schedule == "every thursday"
+    # No migration work happened
+    ws.append_row.assert_not_called()
+
+
+def test_load_configuration_no_migration_when_neither_key_present() -> None:
+    svc = _make_svc()
+    ws = _make_ws()
+    ws.get_all_records.return_value = [
+        {"setting_key": "warning_passive_days", "setting_value": "5",
+         "setting_type": "integer", "description": "", "updated_at": ""},
+    ]
+    svc.spreadsheet.worksheet.return_value = ws
+    config = svc.load_configuration()
+    assert config.meeting_schedule is None
+    ws.append_row.assert_not_called()
 
 
 # ── _escape_cell (formula-injection defense) ──────────────────────────────────

@@ -7,6 +7,7 @@ from typing import List
 from src.models.models import Configuration
 from src.services.cache_service import CacheService
 from src.utils.date_parser import today_la
+from src.utils.meeting_schedule import generate_meeting_dates
 
 
 @dataclass
@@ -27,8 +28,11 @@ class WarningService:
         horizon = today + timedelta(weeks=window_weeks)
         results: List[WarningItem] = []
         events_by_date = {e.date: e for e in self.cache.all_events()}
+        meeting_dates = generate_meeting_dates(config, today, horizon)
         for i in range((horizon - today).days + 1):
             d = today + timedelta(days=i)
+            if meeting_dates is not None and d not in meeting_dates:
+                continue
             ev = events_by_date.get(d)
             if ev and ev.is_assigned:
                 continue

@@ -110,3 +110,58 @@ async def test_window_weeks_bounds_horizon(make_cache, today):
     assert all(today <= i.event_date <= horizon for i in items)
     # 7 days + today = 8 items
     assert len(items) == 8
+
+
+# ── meeting_schedule filters warnings ─────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_warnings_skip_non_meeting_days(make_cache):
+    # Anchor on a Wednesday; meeting_schedule says only Wednesdays.
+    today = date(2026, 4, 1)  # a Wednesday
+    config = Configuration(
+        warning_urgent_days=100,
+        warning_passive_days=100,
+        meeting_schedule="every wednesday",
+    )
+    cache = make_cache(config=config)
+    svc = WarningService(cache)
+    with patch("src.services.warning_service.today_la", return_value=today):
+        items = await svc.check(window_weeks=2)
+    # Every warning should fall on a Wednesday (weekday == 2)
+    assert len(items) > 0
+    for item in items:
+        assert item.event_date.weekday() == 2, (
+            f"warning fired on non-meeting day: {item.event_date}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_warnings_unset_schedule_warns_every_day(make_cache):
+    today = date(2026, 4, 1)
+    config = Configuration(
+        warning_urgent_days=100,
+        warning_passive_days=100,
+        meeting_schedule=None,
+    )
+    cache = make_cache(config=config)
+    svc = WarningService(cache)
+    with patch("src.services.warning_service.today_la", return_value=today):
+        items = await svc.check(window_weeks=1)
+    # 8 consecutive days
+    assert len(items) == 8
+
+
+@pytest.mark.asyncio
+async def test_warnings_malformed_schedule_falls_back_to_all_days(make_cache):
+    today = date(2026, 4, 1)
+    config = Configuration(
+        warning_urgent_days=100,
+        warning_passive_days=100,
+        meeting_schedule="pure gibberish",
+    )
+    cache = make_cache(config=config)
+    svc = WarningService(cache)
+    with patch("src.services.warning_service.today_la", return_value=today):
+        items = await svc.check(window_weeks=1)
+    # Graceful fallback = all days fire warnings
+    assert len(items) == 8
