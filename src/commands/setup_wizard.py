@@ -198,10 +198,16 @@ class _RoleSelectForBucket(ui.RoleSelect):
 
     async def callback(self, interaction: discord.Interaction) -> None:
         ids = [r.id for r in self.values]
-        self.wizard.sheets.update_configuration(
-            self._config_key, json.dumps(sorted(ids)), type_="json"
-        )
-        await self.wizard.cache.refresh(force=True)
+        try:
+            self.wizard.sheets.update_configuration(
+                self._config_key, json.dumps(sorted(ids)), type_="json"
+            )
+            await self.wizard.cache.refresh(force=True)
+        except Exception as e:
+            await interaction.response.send_message(
+                f"Failed to save roles: {e}", ephemeral=True
+            )
+            return
         names = ", ".join(r.name for r in self.values) or "*cleared*"
         await interaction.response.send_message(
             f"Set **{self.bucket}** roles to: {names}", ephemeral=True
@@ -222,10 +228,16 @@ class _ChannelSelectForSetting(ui.ChannelSelect):
     async def callback(self, interaction: discord.Interaction) -> None:
         if self.values:
             ch = self.values[0]
-            self.wizard.sheets.update_configuration(
-                self._config_key, str(ch.id), type_="string"
-            )
-            await self.wizard.cache.refresh(force=True)
+            try:
+                self.wizard.sheets.update_configuration(
+                    self._config_key, str(ch.id), type_="string"
+                )
+                await self.wizard.cache.refresh(force=True)
+            except Exception as e:
+                await interaction.response.send_message(
+                    f"Failed to save channel: {e}", ephemeral=True
+                )
+                return
             await interaction.response.send_message(
                 f"Set to {ch.mention}", ephemeral=True
             )
