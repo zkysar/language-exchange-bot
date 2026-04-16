@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import json
+from zoneinfo import available_timezones
 
 import discord
 from discord import app_commands
-from zoneinfo import available_timezones
 
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService
 from src.utils.auth import is_owner
-from src.utils.config_meta import SETTINGS, validate_setting
+from src.utils.config_meta import validate_setting
 
 BUCKETS = {
     "admin": "admin_role_ids",
