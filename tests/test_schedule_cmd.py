@@ -224,3 +224,35 @@ async def test_schedule_malformed_schedule_falls_back_to_all_days(
     lines = [line for line in text.split("\n") if line.startswith(("✅ ", "❓ "))]
     # Fall back to showing all days rather than hiding everything
     assert len(lines) >= 7
+
+
+# ── external host display ─────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_schedule_specific_date_external_host(cache: MagicMock) -> None:
+    ev = EventDate(date=date(2025, 6, 10), host_discord_id="", host_username="Jane")
+    cache.get_event = MagicMock(return_value=ev)
+    cmd = build_command(cache)
+    interaction = make_interaction()
+    with patch("src.commands.schedule.is_host", return_value=True):
+        await cmd.callback(interaction, weeks=None, date="2025-06-10", user=None)
+    args, _ = interaction.response.send_message.call_args
+    assert "Jane" in args[0]
+    assert "not on Discord" in args[0]
+    assert "<@" not in args[0]
+
+
+@pytest.mark.asyncio
+async def test_schedule_full_view_shows_external_host(cache: MagicMock) -> None:
+    ev = EventDate(date=date(2025, 6, 10), host_discord_id="", host_username="Jane")
+    cache.all_events = MagicMock(return_value=[ev])
+    cmd = build_command(cache)
+    interaction = make_interaction()
+    with (
+        patch("src.commands.schedule.is_host", return_value=True),
+        patch("src.commands.schedule.today_la", return_value=date(2025, 6, 10)),
+    ):
+        await cmd.callback(interaction, weeks=1, date=None, user=None)
+    args, _ = interaction.response.send_message.call_args
+    assert "Jane" in args[0]
+    assert "not on Discord" in args[0]

@@ -24,7 +24,7 @@ class EventDate:
 
     @property
     def is_assigned(self) -> bool:
-        return bool(self.host_discord_id)
+        return bool(self.host_discord_id or self.host_username)
 
 
 @dataclass

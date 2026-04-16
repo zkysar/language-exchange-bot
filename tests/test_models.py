@@ -36,6 +36,16 @@ def test_event_date_with_empty_host_id_is_not_assigned():
     assert e.is_assigned is False
 
 
+def test_event_date_with_username_only_is_assigned():
+    e = EventDate(date=date(2025, 1, 1), host_username="Jane")
+    assert e.is_assigned is True
+
+
+def test_event_date_with_neither_id_nor_username_is_not_assigned():
+    e = EventDate(date=date(2025, 1, 1), host_discord_id="", host_username=None)
+    assert e.is_assigned is False
+
+
 # -- RecurringPattern --
 
 def test_recurring_pattern_defaults_active():
