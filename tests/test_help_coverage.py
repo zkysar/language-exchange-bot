@@ -7,12 +7,12 @@ import discord
 from discord import app_commands
 
 from src.commands import help_cmd as help_mod
-from src.commands import listdates as listdates_mod
 from src.commands import reset as reset_mod
 from src.commands import schedule as schedule_mod
 from src.commands import sync as sync_mod
 from src.commands import unvolunteer as unvolunteer_mod
 from src.commands import volunteer as volunteer_mod
+from src.commands import sheet as sheet_mod
 from src.commands import warnings_cmd as warnings_mod
 
 
@@ -27,10 +27,10 @@ def _build_tree() -> app_commands.CommandTree:
     tree.add_command(volunteer_mod.build_group(sheets, cache))
     tree.add_command(unvolunteer_mod.build_group(sheets, cache, warnings))
     tree.add_command(schedule_mod.build_command(cache))
-    tree.add_command(listdates_mod.build_command(cache))
     tree.add_command(warnings_mod.build_command(cache, warnings))
     tree.add_command(sync_mod.build_command(sheets, cache))
     tree.add_command(reset_mod.build_command(sheets, cache))
+    tree.add_command(sheet_mod.build_command())
     tree.add_command(help_mod.build_command())
     return tree
 
