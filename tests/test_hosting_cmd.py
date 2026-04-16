@@ -80,7 +80,7 @@ async def test_hosting_non_host_rejected(
 
 
 @pytest.mark.asyncio
-async def test_hosting_non_admin_cannot_target_other_user(
+async def test_hosting_non_host_cannot_target_other_user(
     sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
 ) -> None:
     cmd = build_command(sheets, cache, warnings_svc)
@@ -88,15 +88,12 @@ async def test_hosting_non_admin_cannot_target_other_user(
     other = MagicMock(spec=discord.User)
     other.id = 2
     other.display_name = "Victim"
-    with (
-        patch("src.commands.hosting.is_host", return_value=True),
-        patch("src.commands.hosting.is_admin", return_value=False),
-    ):
+    with patch("src.commands.hosting.is_host", return_value=False):
         await cmd.callback(interaction, action=_SIGNUP, date="2025-06-10", user=other)
     interaction.response.send_message.assert_awaited_once()
     args, kwargs = interaction.response.send_message.call_args
     assert kwargs.get("ephemeral") is True
-    assert "admin" in args[0].lower()
+    assert "host" in args[0].lower()
 
 
 @pytest.mark.asyncio
@@ -110,7 +107,6 @@ async def test_hosting_admin_can_target_other_user(
     other.display_name = "Other"
     with (
         patch("src.commands.hosting.is_host", return_value=True),
-        patch("src.commands.hosting.is_admin", return_value=True),
         patch("src.commands.hosting.today_la", return_value=date(2025, 6, 1)),
     ):
         await cmd.callback(interaction, action=_SIGNUP, date="2025-06-10", user=other)

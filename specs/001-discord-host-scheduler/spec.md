@@ -180,11 +180,11 @@ When the database becomes corrupted or inconsistent, an administrator needs to r
 - **FR-010**: System MUST run daily automated checks for unassigned dates at configurable time
 - **FR-011**: System MUST post warnings for unassigned dates with severity based on days until event (7+ days: passive, 3 days: urgent)
 - **FR-012**: System MUST trigger warning checks immediately after any unvolunteer action
-- **FR-013**: System MUST support manual warning checks via `/warnings`. This command is read-only, callable by any user (member, host, or admin), and MUST return its results as an ephemeral Discord response visible only to the invoking user. The command does not post to any shared channel.
+- **FR-013**: ~~System MUST support manual warning checks via `/warnings`.~~ **Removed**: the `/warnings` slash command was intentionally removed (PR #19). Warning information is visible in the daily channel post and via `/schedule`.
 - **FR-014**: System MUST allow force synchronization with Google Sheets via command
 - **FR-015**: System MUST cache last known state to handle temporary Google Sheets API failures; when rate limit exceeded, fail-fast with immediate error message to user suggesting retry later
 - **FR-016**: System MUST provide clear error messages pointing to manual sheet editing when bot is unavailable
-- **FR-017**: System MUST support proxy actions where one user can volunteer/unvolunteer others (requires host or admin role as defined in `host_role_ids` / `admin_role_ids` in Configuration)
+- **FR-017**: System MUST support proxy actions where one user can volunteer/unvolunteer others (requires host or admin role as defined in `host_role_ids` / `admin_role_ids` in Configuration). Previously the code incorrectly required admin; this was corrected to require host or higher.
 - **FR-018**: System MUST log all actions (volunteer, unvolunteer, warnings) to an audit trail
 - **FR-019**: System MUST provide help command listing all available commands with descriptions
 - **FR-020**: System MUST provide detailed help for each command when requested

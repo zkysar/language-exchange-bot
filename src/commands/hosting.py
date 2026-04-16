@@ -13,7 +13,7 @@ from src.models.models import EventDate, RecurringPattern
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService, make_audit
 from src.services.warning_service import WarningService
-from src.utils.auth import is_admin, is_host
+from src.utils.auth import is_host
 from src.utils.date_parser import (
     format_date,
     format_display,
@@ -165,11 +165,11 @@ def build_command(
 
         target = user or interaction.user
 
-        if user is not None and user.id != interaction.user.id and not is_admin(
+        if user is not None and user.id != interaction.user.id and not is_host(
             interaction.user, cache.config
         ):
             await interaction.response.send_message(
-                "Only admins can sign up or cancel for another user.",
+                "Only hosts or admins can sign up or cancel for another user.",
                 ephemeral=True,
             )
             return
@@ -403,6 +403,7 @@ async def _signup_recurring(
 
     view = _ConfirmView(sheets, cache, target, interaction.user, parsed, available)
     await interaction.response.send_message("\n".join(preview_lines), view=view)
+    view.message = await interaction.original_response()
 
 
 class _ConfirmView(discord.ui.View):
@@ -423,6 +424,16 @@ class _ConfirmView(discord.ui.View):
         self.parsed = parsed
         self.dates = dates
         self._done = False
+        self.message: Optional[discord.Message] = None
+
+    async def on_timeout(self) -> None:
+        for item in self.children:
+            item.disabled = True  # type: ignore[attr-defined]
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except Exception:
+                pass
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.success)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
