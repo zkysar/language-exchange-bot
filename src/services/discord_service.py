@@ -14,7 +14,6 @@ from src.commands import hosting as hosting_mod
 from src.commands import reset as reset_mod
 from src.commands import schedule as schedule_mod
 from src.commands import setup_wizard as setup_wizard_mod
-from src.commands import sheet as sheet_mod
 from src.commands import sync as sync_mod
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService
@@ -44,7 +43,6 @@ class SchedulerBot(discord.Client):
         self.tree.add_command(reset_mod.build_command(self.sheets, self.cache))
         self.tree.add_command(config_mod.build_group(self.sheets, self.cache))
         self.tree.add_command(setup_wizard_mod.build_command(self.sheets, self.cache))
-        self.tree.add_command(sheet_mod.build_command())
         self.tree.add_command(help_mod.build_command(self.cache))
 
     async def setup_hook(self) -> None:

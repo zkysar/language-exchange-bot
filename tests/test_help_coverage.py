@@ -12,7 +12,6 @@ from src.commands import hosting as hosting_mod
 from src.commands import reset as reset_mod
 from src.commands import schedule as schedule_mod
 from src.commands import setup_wizard as setup_wizard_mod
-from src.commands import sheet as sheet_mod
 from src.commands import sync as sync_mod
 
 _UNDOCUMENTED_COMMANDS = {"help"}
@@ -32,7 +31,6 @@ def _build_tree() -> app_commands.CommandTree:
     tree.add_command(reset_mod.build_command(sheets, cache))
     tree.add_command(config_mod.build_group(sheets, cache))
     tree.add_command(setup_wizard_mod.build_command(sheets, cache))
-    tree.add_command(sheet_mod.build_command())
     tree.add_command(help_mod.build_command(cache))
     return tree
 
@@ -91,7 +89,7 @@ def test_autocomplete_filters_by_role() -> None:
 
     nobody = _mock_user([])
     visible = help_mod._visible_autocomplete(nobody, config)
-    assert visible == ["sheet"]
+    assert visible == []
 
 
 def test_unconfigured_warning_in_embed() -> None:
