@@ -10,8 +10,7 @@ from src.commands.sheet import sheet_url
 HELP_TEXT = {
     None: (
         "**Commands**\n"
-        "• `/schedule [weeks] [date]` — View upcoming host schedule\n"
-        "• `/listdates [user]` — Upcoming dates for a user\n"
+        "• `/schedule [weeks] [date] [user]` — View upcoming host schedule\n"
         "• `/warnings` — Check unassigned dates needing hosts\n"
         "• `/volunteer date date:[date] [user]` — Sign up for an open date\n"
         "• `/volunteer recurring pattern:[pattern] [user]` — Recurring pattern\n"
@@ -27,11 +26,10 @@ HELP_TEXT = {
     "unvolunteer": "Use `/unvolunteer date` to cancel a specific hosting commitment, or "
                    "`/unvolunteer recurring` to cancel a recurring pattern (clears future dates).",
     "schedule": "Use `/schedule` to view the next N weeks (default 4, max 12). "
-                "Pass `date:YYYY-MM-DD` to check a single date.",
+                "Pass `date:YYYY-MM-DD` to check a single date, or `user:@x` to filter "
+                "to a specific user's dates (hosts/admins can view others).",
     "warnings": "Use `/warnings` to see any unassigned dates within the warning window. "
                 "Response is always private.",
-    "listdates": "Use `/listdates` to view your upcoming dates, or `/listdates user:@x` "
-                 "(hosts/admins only) to view another user.",
     "sync": "Admin-only. Forces a full resync of local cache from Google Sheets.",
     "reset": "Admin-only. Displays the reset procedure and requires confirmation.",
     "sheet": "Shows the URL of the backing Google Sheet. You need to be "
