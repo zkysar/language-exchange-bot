@@ -16,6 +16,9 @@ HELP_TEXT = {
         "• `/volunteer recurring pattern:[pattern] [user]` — Recurring pattern\n"
         "• `/unvolunteer date date:[date] [user]` — Cancel a date\n"
         "• `/unvolunteer recurring [user]` — Cancel recurring pattern\n"
+        "• `/config show` — (owner) View all configuration\n"
+        "• `/config <group> <setting>` — (owner) Change a setting\n"
+        "• `/setup` — (owner) Guided setup wizard\n"
         "• `/sync` — (admin) Force sync with Google Sheets\n"
         "• `/reset` — (admin) Reset database cache\n"
         "• `/sheet` — Link to the backing Google Sheet\n"
@@ -30,6 +33,9 @@ HELP_TEXT = {
                 "to a specific user's dates (hosts/admins can view others).",
     "warnings": "Use `/warnings` to see any unassigned dates within the warning window. "
                 "Response is always private.",
+    "config": "Owner-only. Use `/config show` to see all settings, or `/config warnings`, "
+              "`/config schedule`, `/config channels`, `/config roles` to change values.",
+    "setup": "Owner-only. Guided wizard that walks through all essential bot configuration.",
     "sync": "Admin-only. Forces a full resync of local cache from Google Sheets.",
     "reset": "Admin-only. Displays the reset procedure and requires confirmation.",
     "sheet": "Shows the URL of the backing Google Sheet. You need to be "
