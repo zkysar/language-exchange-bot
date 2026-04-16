@@ -12,7 +12,6 @@ def _make_service_with_rows(rows: list[dict]) -> SheetsService:
     svc = SheetsService.__new__(SheetsService)  # bypass __init__
     fake_ws = MagicMock()
     fake_ws.get_all_records.return_value = rows
-    fake_ws.row_values.return_value = ["setting_key"]  # non-empty header short-circuit
     svc._get_or_create = MagicMock(return_value=fake_ws)  # type: ignore[attr-defined]
     return svc
 

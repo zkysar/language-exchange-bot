@@ -381,6 +381,7 @@ class SheetsService:
                     pass  # handled in legacy fallback below
             except (ValueError, json.JSONDecodeError) as e:
                 log.warning("bad config %s=%r: %s", key, val, e)
+        # Re-scan rows for legacy channel keys if the new key was not set
         if config.announcement_channel_id is None:
             legacy_order = ("warnings_channel_id", "schedule_channel_id")
             legacy: dict[str, str] = {}
