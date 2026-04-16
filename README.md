@@ -15,7 +15,7 @@ A Discord bot that manages host volunteering for recurring meetups, backed by Go
 On first run the bot creates the required sheets (Schedule, RecurringPatterns,
 AuditLog, Configuration) with default configuration. Edit the Configuration sheet
 to set `member_role_ids`, `host_role_ids`, `admin_role_ids` (JSON arrays of
-Discord role IDs), and `warnings_channel_id` / `schedule_channel_id`.
+Discord role IDs), and `announcement_channel_id`.
 
 ## Commands
 

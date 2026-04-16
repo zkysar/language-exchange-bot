@@ -138,22 +138,22 @@ def test_load_configuration_channel_id_none_when_empty() -> None:
     svc = _make_svc()
     ws = _make_ws()
     ws.get_all_records.return_value = [
-        {"setting_key": "schedule_channel_id", "setting_value": "", "setting_type": "string"},
+        {"setting_key": "announcement_channel_id", "setting_value": "", "setting_type": "string"},
     ]
     svc.spreadsheet.worksheet.return_value = ws
     config = svc.load_configuration()
-    assert config.schedule_channel_id is None
+    assert config.announcement_channel_id is None
 
 
 def test_load_configuration_channel_id_set_when_present() -> None:
     svc = _make_svc()
     ws = _make_ws()
     ws.get_all_records.return_value = [
-        {"setting_key": "schedule_channel_id", "setting_value": "999", "setting_type": "string"},
+        {"setting_key": "announcement_channel_id", "setting_value": "999", "setting_type": "string"},
     ]
     svc.spreadsheet.worksheet.return_value = ws
     config = svc.load_configuration()
-    assert config.schedule_channel_id == "999"
+    assert config.announcement_channel_id == "999"
 
 
 def test_load_configuration_malformed_json_skipped() -> None:
