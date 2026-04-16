@@ -11,7 +11,6 @@ from src.utils.auth import (
     _load_hardcoded_owners,
     is_admin,
     is_host,
-    is_member,
     is_owner,
 )
 
@@ -33,7 +32,6 @@ def make_plain_user(user_id: int) -> MagicMock:
 @pytest.fixture
 def config():
     return Configuration(
-        member_role_ids=[100],
         host_role_ids=[200],
         admin_role_ids=[300],
         owner_user_ids=[999],
@@ -79,7 +77,7 @@ def test_admin_role_grants_admin(config):
     assert is_admin(user, config) is True
 
 
-def test_member_role_does_not_grant_admin(config):
+def test_unrecognized_role_does_not_grant_admin(config):
     user = make_member(1, role_ids=[100])
     assert is_admin(user, config) is False
 
@@ -106,7 +104,7 @@ def test_admin_role_grants_host(config):
     assert is_host(user, config) is True
 
 
-def test_member_only_is_not_host(config):
+def test_unrecognized_role_is_not_host(config):
     user = make_member(1, role_ids=[100])
     assert is_host(user, config) is False
 
@@ -115,50 +113,6 @@ def test_owner_is_host(config):
     user = make_member(999)
     assert is_host(user, config) is True
 
-
-# -- is_member --
-
-def test_member_role_grants_member(config):
-    user = make_member(1, role_ids=[100])
-    assert is_member(user, config) is True
-
-
-def test_host_role_grants_member(config):
-    user = make_member(1, role_ids=[200])
-    assert is_member(user, config) is True
-
-
-def test_admin_role_grants_member(config):
-    user = make_member(1, role_ids=[300])
-    assert is_member(user, config) is True
-
-
-def test_no_matching_roles_is_not_member(config):
-    user = make_member(1, role_ids=[])
-    assert is_member(user, config) is False
-
-
-def test_empty_member_role_ids_allows_everyone():
-    open_config = Configuration(member_role_ids=[], host_role_ids=[200], admin_role_ids=[300])
-    user = make_member(1, role_ids=[])
-    assert is_member(user, open_config) is True
-
-
-def test_plain_user_allowed_when_member_role_ids_empty():
-    open_config = Configuration(member_role_ids=[])
-    user = make_plain_user(1)
-    assert is_member(user, open_config) is True
-
-
-def test_owner_is_member(config):
-    user = make_member(999)
-    assert is_member(user, config) is True
-
-
-def test_multiple_roles_with_any_match(config):
-    user = make_member(1, role_ids=[50, 100, 400])
-    assert is_member(user, config) is True
-    assert is_host(user, config) is False
 
 
 # -- _load_hardcoded_owners (env-var override) --

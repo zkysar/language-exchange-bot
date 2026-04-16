@@ -54,10 +54,9 @@ def _mock_user(role_ids: list[int]) -> MagicMock:
 
 
 def _mock_config(
-    member_ids=None, host_ids=None, admin_ids=None, owner_ids=None,
+    host_ids=None, admin_ids=None, owner_ids=None,
 ) -> MagicMock:
     config = MagicMock()
-    config.member_role_ids = member_ids or []
     config.host_role_ids = host_ids or []
     config.admin_role_ids = admin_ids or []
     config.owner_user_ids = owner_ids or []
@@ -65,10 +64,10 @@ def _mock_config(
 
 
 def test_autocomplete_filters_by_role() -> None:
-    config = _mock_config(member_ids=[1], host_ids=[2], admin_ids=[3])
+    config = _mock_config(host_ids=[2], admin_ids=[3])
 
-    member = _mock_user([1])
-    visible = help_mod._visible_autocomplete(member, config)
+    nobody = _mock_user([])
+    visible = help_mod._visible_autocomplete(nobody, config)
     assert "schedule" in visible
     assert "hosting" not in visible
     assert "sync" not in visible
@@ -85,10 +84,6 @@ def test_autocomplete_filters_by_role() -> None:
     assert "hosting" in visible
     assert "sync" in visible
 
-    nobody = _mock_user([])
-    visible = help_mod._visible_autocomplete(nobody, config)
-    assert visible == []
-
 
 def test_unconfigured_warning_in_embed() -> None:
     config = _mock_config()
@@ -99,7 +94,7 @@ def test_unconfigured_warning_in_embed() -> None:
 
 
 def test_no_warning_when_configured() -> None:
-    config = _mock_config(member_ids=[1])
+    config = _mock_config(host_ids=[1])
     user = _mock_user([1])
     embed = help_mod._build_embed(user, config)
     field_names = [f.name for f in embed.fields]

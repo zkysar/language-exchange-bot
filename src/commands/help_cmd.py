@@ -8,7 +8,7 @@ from discord import app_commands
 
 from src.commands.sheet import sheet_url
 from src.services.cache_service import CacheService
-from src.utils.auth import is_admin, is_host, is_member, is_owner
+from src.utils.auth import is_admin, is_host, is_owner
 
 
 def _read_version() -> str:
@@ -87,7 +87,7 @@ _ADMIN_CATEGORY = (
 )
 
 _OWNER_INTRO = (
-    "Configure which Discord roles map to members, hosts, and admins, "
+    "Configure which Discord roles map to hosts and admins, "
     "and tweak scheduling defaults. Run `/setup` first on a fresh install."
 )
 
@@ -102,7 +102,7 @@ _OWNER_CATEGORY = (
 )
 
 _AUTOCOMPLETE_TIERS = [
-    (is_member, ["schedule"]),
+    (None, ["schedule"]),
     (is_host, ["hosting"]),
     (is_admin, ["sync"]),
     (is_owner, ["config", "setup"]),
@@ -110,7 +110,7 @@ _AUTOCOMPLETE_TIERS = [
 
 
 def _roles_configured(config) -> bool:
-    return bool(config.member_role_ids or config.host_role_ids or config.admin_role_ids)
+    return bool(config.host_role_ids or config.admin_role_ids)
 
 
 def _visible_autocomplete(user: discord.abc.User, config) -> list[str]:
@@ -129,30 +129,27 @@ def _build_embed(user: discord.abc.User, config) -> discord.Embed:
         color=0x5865F2,
     )
 
-    if _roles_configured(config):
-        if is_member(user, config):
-            for heading, cmds in _MEMBER_CATEGORIES.items():
-                lines = f"*{_MEMBER_INTRO}*\n" + "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
-                embed.add_field(name=heading, value=lines, inline=False)
-        if is_host(user, config):
-            heading, cmds = _HOST_CATEGORY
-            lines = f"*{_HOST_INTRO}*\n" + "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
-            embed.add_field(name=heading, value=lines, inline=False)
-        if is_admin(user, config):
-            heading, cmds = _ADMIN_CATEGORY
-            lines = f"*{_ADMIN_INTRO}*\n" + "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
-            embed.add_field(name=heading, value=lines, inline=False)
-        if is_owner(user, config):
-            heading, cmds = _OWNER_CATEGORY
-            lines = f"*{_OWNER_INTRO}*\n" + "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
-            embed.add_field(name=heading, value=lines, inline=False)
-    else:
+    for heading, cmds in _MEMBER_CATEGORIES.items():
+        lines = f"*{_MEMBER_INTRO}*\n" + "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
+        embed.add_field(name=heading, value=lines, inline=False)
+    if is_host(user, config):
+        heading, cmds = _HOST_CATEGORY
+        lines = f"*{_HOST_INTRO}*\n" + "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
+        embed.add_field(name=heading, value=lines, inline=False)
+    if is_admin(user, config):
+        heading, cmds = _ADMIN_CATEGORY
+        lines = f"*{_ADMIN_INTRO}*\n" + "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
+        embed.add_field(name=heading, value=lines, inline=False)
+    if is_owner(user, config):
+        heading, cmds = _OWNER_CATEGORY
+        lines = f"*{_OWNER_INTRO}*\n" + "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
+        embed.add_field(name=heading, value=lines, inline=False)
+    if not _roles_configured(config):
         embed.add_field(
             name="Not configured",
             value=(
                 "No roles are set up yet. An owner needs to run "
-                "`/setup` to assign admin, host, and member roles "
-                "before most commands will work."
+                "`/setup` to assign admin and host roles."
             ),
             inline=False,
         )

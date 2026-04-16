@@ -87,7 +87,6 @@ def test_configuration_default_sensible_values():
 
 def test_configuration_default_has_empty_id_lists():
     c = Configuration.default()
-    assert c.member_role_ids == []
     assert c.host_role_ids == []
     assert c.admin_role_ids == []
     assert c.owner_user_ids == []

@@ -7,7 +7,7 @@ import discord
 from discord import app_commands
 
 from src.services.cache_service import CacheService
-from src.utils.auth import is_host, is_member
+from src.utils.auth import is_host
 from src.utils.date_parser import format_display, parse_iso_date, today_la
 
 
@@ -24,11 +24,6 @@ def build_command(cache: CacheService) -> app_commands.Command:
         date: Optional[str] = None,
         user: Optional[discord.User] = None,
     ) -> None:
-        if not is_member(interaction.user, cache.config):
-            await interaction.response.send_message(
-                "You do not have access to this bot.", ephemeral=True
-            )
-            return
         host_tier = is_host(interaction.user, cache.config)
 
         if user and user != interaction.user and not host_tier:
