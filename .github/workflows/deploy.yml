@@ -3,6 +3,7 @@ name: CI + Deploy
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
 
@@ -27,27 +28,6 @@ jobs:
       - name: Compile check
         run: python -m compileall -q src
 
-  tag:
-    name: Auto-increment version tag
-    needs: check
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      new_tag: ${{ steps.tag.outputs.new_tag }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Bump version and push tag
-        id: tag
-        uses: anothrNick/github-tag-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEFAULT_BUMP: patch
-          WITH_V: true
-
   test:
     name: Unit tests
     runs-on: ubuntu-latest
@@ -65,17 +45,32 @@ jobs:
       - name: Run pytest
         run: python -m pytest tests/ -v
 
-  deploy:
-    name: Deploy to Fly.io
-    needs: [check, tag, test]
+  deploy-dev:
+    name: Deploy to Fly.io (dev)
+    needs: [check, test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:
-      group: deploy-production
+      group: deploy-dev
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only --build-arg APP_VERSION=${{ needs.tag.outputs.new_tag }}
+      - run: flyctl deploy --remote-only --config fly.toml
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  deploy-prod:
+    name: Deploy to Fly.io (prod)
+    needs: [check, test]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only --config fly.prod.toml
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
