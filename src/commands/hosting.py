@@ -314,12 +314,17 @@ class _ConfirmView(discord.ui.View):
         self.invoker = invoker
         self.parsed = parsed
         self.dates = dates
+        self._done = False
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.success)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         if interaction.user.id != self.invoker.id:
             await interaction.response.send_message("Only the invoker can confirm.", ephemeral=True)
             return
+        if self._done:
+            await interaction.response.send_message("Already confirmed.", ephemeral=True)
+            return
+        self._done = True
         await interaction.response.defer()
         async with self.sheets.write_lock:
             loop = asyncio.get_running_loop()
