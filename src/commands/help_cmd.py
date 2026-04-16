@@ -34,13 +34,25 @@ HELP_TEXT = {
 }
 
 
+_COMMAND_CHOICES = [
+    app_commands.Choice(name=key, value=key)
+    for key in HELP_TEXT
+    if key is not None
+]
+
+
 def build_command() -> app_commands.Command:
     @app_commands.command(name="help", description="Show command help")
-    @app_commands.describe(command="Optional command name")
-    async def help_cmd(interaction: discord.Interaction, command: Optional[str] = None) -> None:
-        text = HELP_TEXT.get(command.lower() if command else None)
+    @app_commands.describe(command="Pick a command for details")
+    @app_commands.choices(command=_COMMAND_CHOICES)
+    async def help_cmd(
+        interaction: discord.Interaction,
+        command: Optional[app_commands.Choice[str]] = None,
+    ) -> None:
+        key = command.value if command else None
+        text = HELP_TEXT.get(key)
         if not text:
-            text = f"No help for `{command}`.\n\n" + HELP_TEXT[None]
+            text = HELP_TEXT[None]
         await interaction.response.send_message(text, ephemeral=True)
 
     return help_cmd
