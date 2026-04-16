@@ -9,7 +9,6 @@ from discord import app_commands
 from discord.ext import tasks
 
 from src.commands import help_cmd as help_mod
-from src.commands import listdates as listdates_mod
 from src.commands import reset as reset_mod
 from src.commands import schedule as schedule_mod
 from src.commands import config_cmd as config_mod
@@ -44,7 +43,6 @@ class SchedulerBot(discord.Client):
         self.tree.add_command(volunteer_mod.build_group(self.sheets, self.cache))
         self.tree.add_command(unvolunteer_mod.build_group(self.sheets, self.cache, self.warnings))
         self.tree.add_command(schedule_mod.build_command(self.cache))
-        self.tree.add_command(listdates_mod.build_command(self.cache))
         self.tree.add_command(warnings_mod.build_command(self.cache, self.warnings))
         self.tree.add_command(sync_mod.build_command(self.sheets, self.cache))
         self.tree.add_command(reset_mod.build_command(self.sheets, self.cache))
@@ -54,12 +52,48 @@ class SchedulerBot(discord.Client):
         self.tree.add_command(help_mod.build_command())
 
     async def setup_hook(self) -> None:
+        self.tree.interaction_check = self._guild_only_check
         await self.tree.sync()
         log.info("slash commands synced")
         self._start_daily_check()
 
+    async def _guild_only_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "This bot only works in a server. Please use commands in a server channel.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
     async def on_ready(self) -> None:
         log.info("bot ready as %s (%s)", self.user, self.user.id if self.user else "?")
+        await self._sync_avatar()
+
+    async def _sync_avatar(self) -> None:
+        from hashlib import sha256
+        from pathlib import Path
+
+        import cairosvg
+
+        icon_path = Path(__file__).resolve().parents[2] / "assets" / "bot-icon.svg"
+        if not icon_path.exists():
+            log.warning("bot icon not found at %s", icon_path)
+            return
+
+        svg_bytes = icon_path.read_bytes()
+        png_bytes = cairosvg.svg2png(bytestring=svg_bytes, output_width=512, output_height=512)
+        new_hash = sha256(png_bytes).hexdigest()[:16]
+
+        if getattr(self, "_avatar_hash", None) == new_hash:
+            return
+
+        try:
+            await self.user.edit(avatar=png_bytes)
+            self._avatar_hash = new_hash
+            log.info("bot avatar updated")
+        except Exception:
+            log.warning("failed to update avatar (rate-limited?)", exc_info=True)
 
     def _start_daily_check(self) -> None:
         @tasks.loop(minutes=1)
