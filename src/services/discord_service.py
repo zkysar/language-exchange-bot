@@ -49,7 +49,7 @@ class SchedulerBot(discord.Client):
         self.tree.add_command(reset_mod.build_command(self.sheets, self.cache))
         self.tree.add_command(setup_mod.build_group(self.sheets, self.cache))
         self.tree.add_command(sheet_mod.build_command())
-        self.tree.add_command(help_mod.build_command())
+        self.tree.add_command(help_mod.build_command(self.cache))
 
     async def setup_hook(self) -> None:
         await self.tree.sync()
