@@ -491,6 +491,48 @@ async def test_date_autocomplete_cancel_returns_assigned_dates(
 
 
 @pytest.mark.asyncio
+async def test_date_autocomplete_cancel_includes_external_hosts(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    events = [
+        EventDate(date=date(2025, 6, 10), host_discord_id="1"),
+        EventDate(date=date(2025, 6, 11), host_discord_id="", host_username="Jane"),
+    ]
+    cache.all_events.return_value = events
+    cmd = build_command(sheets, cache, warnings_svc)
+    autocomplete = cmd._params["date"].autocomplete
+    interaction = make_interaction(user_id=1)
+    interaction.data = {"options": [{"name": "action", "value": "cancel"}]}
+    with patch("src.commands.hosting.today_la", return_value=date(2025, 6, 1)):
+        results = await autocomplete(interaction, "")
+    values = [c.value for c in results]
+    names = [c.name for c in results]
+    assert "2025-06-10" in values
+    assert "2025-06-11" in values
+    assert any("Jane" in n and "not on Discord" in n for n in names)
+
+
+@pytest.mark.asyncio
+async def test_date_autocomplete_cancel_hides_external_when_user_specified(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    events = [
+        EventDate(date=date(2025, 6, 10), host_discord_id="1"),
+        EventDate(date=date(2025, 6, 11), host_discord_id="", host_username="Jane"),
+    ]
+    cache.all_events.return_value = events
+    cmd = build_command(sheets, cache, warnings_svc)
+    autocomplete = cmd._params["date"].autocomplete
+    interaction = make_interaction(user_id=1)
+    interaction.data = {"options": [{"name": "action", "value": "cancel"}, {"name": "user", "value": "1"}]}
+    with patch("src.commands.hosting.today_la", return_value=date(2025, 6, 1)):
+        results = await autocomplete(interaction, "")
+    values = [c.value for c in results]
+    assert "2025-06-10" in values
+    assert "2025-06-11" not in values
+
+
+@pytest.mark.asyncio
 async def test_pattern_autocomplete_signup_returns_suggestions(
     sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
 ) -> None:

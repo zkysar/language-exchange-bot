@@ -234,10 +234,7 @@ async def test_schedule_specific_date_external_host(cache: MagicMock) -> None:
     cache.get_event = MagicMock(return_value=ev)
     cmd = build_command(cache)
     interaction = make_interaction()
-    with (
-        patch("src.commands.schedule.is_member", return_value=True),
-        patch("src.commands.schedule.is_host", return_value=True),
-    ):
+    with patch("src.commands.schedule.is_host", return_value=True):
         await cmd.callback(interaction, weeks=None, date="2025-06-10", user=None)
     args, _ = interaction.response.send_message.call_args
     assert "Jane" in args[0]
@@ -252,7 +249,6 @@ async def test_schedule_full_view_shows_external_host(cache: MagicMock) -> None:
     cmd = build_command(cache)
     interaction = make_interaction()
     with (
-        patch("src.commands.schedule.is_member", return_value=True),
         patch("src.commands.schedule.is_host", return_value=True),
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 10)),
     ):

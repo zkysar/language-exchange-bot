@@ -512,15 +512,22 @@ async def _cancel_date_autocomplete(
     for opt in interaction.data.get("options", []) or []:
         if opt.get("name") == "user":
             target_id = opt.get("value")
+    explicit_user = bool(target_id)
     if not target_id:
         target_id = str(interaction.user.id)
     choices: List[app_commands.Choice[str]] = []
     for ev in sorted(cache.all_events(), key=lambda e: e.date):
         if not ev.is_assigned or ev.date < today:
             continue
-        if str(ev.host_discord_id) != str(target_id):
-            continue
-        label = format_display(ev.date)
+        if ev.host_discord_id:
+            if str(ev.host_discord_id) != str(target_id):
+                continue
+            label = format_display(ev.date)
+        else:
+            # External host date — only show when no user was specified
+            if explicit_user:
+                continue
+            label = f"{format_display(ev.date)} — {ev.host_username} (not on Discord)"
         if current and current.lower() not in label.lower() and current not in format_date(ev.date):
             continue
         choices.append(app_commands.Choice(name=label, value=format_date(ev.date)))
