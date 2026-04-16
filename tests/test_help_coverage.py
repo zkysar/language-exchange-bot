@@ -27,7 +27,7 @@ def _build_tree() -> app_commands.CommandTree:
     tree.add_command(hosting_mod.build_command(sheets, cache, warnings))
     tree.add_command(schedule_mod.build_command(cache))
     tree.add_command(sync_mod.build_command(sheets, cache))
-    tree.add_command(config_mod.build_group(sheets, cache))
+    tree.add_command(config_mod.build_command(sheets, cache))
     tree.add_command(setup_wizard_mod.build_command(sheets, cache))
     tree.add_command(help_mod.build_command(cache))
     return tree

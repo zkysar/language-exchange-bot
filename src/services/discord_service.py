@@ -39,7 +39,7 @@ class SchedulerBot(discord.Client):
         self.tree.add_command(hosting_mod.build_command(self.sheets, self.cache, self.warnings))
         self.tree.add_command(schedule_mod.build_command(self.cache))
         self.tree.add_command(sync_mod.build_command(self.sheets, self.cache))
-        self.tree.add_command(config_mod.build_group(self.sheets, self.cache))
+        self.tree.add_command(config_mod.build_command(self.sheets, self.cache))
         self.tree.add_command(setup_wizard_mod.build_command(self.sheets, self.cache))
         self.tree.add_command(help_mod.build_command(self.cache))
 

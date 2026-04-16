@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from src.utils.config_meta import SETTINGS, SettingMeta, validate_setting
 from src.models.models import Configuration
+from src.utils.config_meta import SETTINGS, SettingMeta, validate_setting
 
 
 def test_all_settings_have_required_fields():
