@@ -50,9 +50,19 @@ class SchedulerBot(discord.Client):
         self.tree.add_command(help_mod.build_command())
 
     async def setup_hook(self) -> None:
+        self.tree.interaction_check = self._guild_only_check
         await self.tree.sync()
         log.info("slash commands synced")
         self._start_daily_check()
+
+    async def _guild_only_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "This bot only works in a server. Please use commands in a server channel.",
+                ephemeral=True,
+            )
+            return False
+        return True
 
     async def on_ready(self) -> None:
         log.info("bot ready as %s (%s)", self.user, self.user.id if self.user else "?")
