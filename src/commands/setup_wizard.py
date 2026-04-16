@@ -51,7 +51,6 @@ class SetupWizardView(ui.View):
         )
         embed.add_field(name="Admin", value=_role_mentions(guild, cfg.admin_role_ids), inline=True)
         embed.add_field(name="Host", value=_role_mentions(guild, cfg.host_role_ids), inline=True)
-        embed.add_field(name="Member", value=_role_mentions(guild, cfg.member_role_ids), inline=True)
         return embed
 
     def _build_channels_embed(self) -> discord.Embed:
@@ -95,8 +94,7 @@ class SetupWizardView(ui.View):
             name="Roles",
             value=(
                 f"Admin: {_role_mentions(guild, cfg.admin_role_ids)}\n"
-                f"Host: {_role_mentions(guild, cfg.host_role_ids)}\n"
-                f"Member: {_role_mentions(guild, cfg.member_role_ids)}"
+                f"Host: {_role_mentions(guild, cfg.host_role_ids)}"
             ),
             inline=False,
         )
@@ -123,7 +121,7 @@ class SetupWizardView(ui.View):
 
         if self.step == 0:
             embed = self._build_roles_embed()
-            for bucket_label, bucket_key in [("Admin", "admin"), ("Host", "host"), ("Member", "member")]:
+            for bucket_label, bucket_key in [("Admin", "admin"), ("Host", "host")]:
                 select = _RoleSelectForBucket(self, bucket_key, placeholder=f"Select {bucket_label} roles...")
                 self.add_item(select)
             self.add_item(_NextButton(self, label="Next"))
@@ -188,7 +186,6 @@ class _RoleSelectForBucket(ui.RoleSelect):
         self._config_key = {
             "admin": "admin_role_ids",
             "host": "host_role_ids",
-            "member": "member_role_ids",
         }[bucket]
 
     async def callback(self, interaction: discord.Interaction) -> None:
@@ -345,7 +342,7 @@ def build_command(sheets: SheetsService, cache: CacheService) -> app_commands.Co
 
         view = SetupWizardView(sheets, cache, interaction)
         embed = view._build_roles_embed()
-        for bucket_label, bucket_key in [("Admin", "admin"), ("Host", "host"), ("Member", "member")]:
+        for bucket_label, bucket_key in [("Admin", "admin"), ("Host", "host")]:
             select = _RoleSelectForBucket(view, bucket_key, placeholder=f"Select {bucket_label} roles...")
             view.add_item(select)
         view.add_item(_NextButton(view, label="Next"))

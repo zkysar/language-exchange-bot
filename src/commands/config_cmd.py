@@ -17,9 +17,8 @@ _TZ_CACHE: list[str] = sorted(available_timezones())
 ROLE_BUCKETS: dict[str, str] = {
     "admin": "admin_role_ids",
     "host": "host_role_ids",
-    "member": "member_role_ids",
 }
-_ROLE_LABELS = {"admin": "Admin roles", "host": "Host roles", "member": "Member roles"}
+_ROLE_LABELS = {"admin": "Admin roles", "host": "Host roles"}
 
 ACTION_CHOICES = [
     app_commands.Choice(name="get", value="get"),
@@ -123,7 +122,6 @@ async def _handle_get(
             "**Roles**",
             f"  Admin: {_role_mentions(cfg.admin_role_ids)}",
             f"  Host: {_role_mentions(cfg.host_role_ids)}",
-            f"  Member: {_role_mentions(cfg.member_role_ids)}",
         ]
         await interaction.response.send_message("\n".join(lines), ephemeral=True)
         return

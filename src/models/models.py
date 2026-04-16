@@ -61,7 +61,6 @@ class Configuration:
     daily_check_time: str = "09:00"
     daily_check_timezone: str = "America/Los_Angeles"
     schedule_window_weeks: int = 2
-    member_role_ids: List[int] = field(default_factory=list)
     host_role_ids: List[int] = field(default_factory=list)
     admin_role_ids: List[int] = field(default_factory=list)
     owner_user_ids: List[int] = field(default_factory=list)

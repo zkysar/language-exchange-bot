@@ -31,26 +31,12 @@ def cache() -> MagicMock:
 
 
 @pytest.mark.asyncio
-async def test_schedule_non_member_rejected(cache: MagicMock) -> None:
-    cmd = build_command(cache)
-    interaction = make_interaction()
-    with patch("src.commands.schedule.is_member", return_value=False):
-        await cmd.callback(interaction, weeks=None, date=None, user=None)
-    interaction.response.send_message.assert_awaited_once()
-    _, kwargs = interaction.response.send_message.call_args
-    assert kwargs.get("ephemeral") is True
-
-
-@pytest.mark.asyncio
 async def test_schedule_member_cannot_view_other_user_dates(cache: MagicMock) -> None:
     cmd = build_command(cache)
     interaction = make_interaction(user_id=1)
     other_user = MagicMock(spec=discord.User)
     other_user.id = 2
-    with (
-        patch("src.commands.schedule.is_member", return_value=True),
-        patch("src.commands.schedule.is_host", return_value=False),
-    ):
+    with patch("src.commands.schedule.is_host", return_value=False):
         await cmd.callback(interaction, weeks=None, date=None, user=other_user)
     args, kwargs = interaction.response.send_message.call_args
     assert "only" in args[0].lower() or "own" in args[0].lower()
@@ -61,10 +47,7 @@ async def test_schedule_member_cannot_view_other_user_dates(cache: MagicMock) ->
 async def test_schedule_invalid_date_format_rejected(cache: MagicMock) -> None:
     cmd = build_command(cache)
     interaction = make_interaction()
-    with (
-        patch("src.commands.schedule.is_member", return_value=True),
-        patch("src.commands.schedule.is_host", return_value=True),
-    ):
+    with patch("src.commands.schedule.is_host", return_value=True):
         await cmd.callback(interaction, weeks=None, date="not-a-date", user=None)
     _, kwargs = interaction.response.send_message.call_args
     assert kwargs.get("ephemeral") is True
@@ -76,10 +59,7 @@ async def test_schedule_specific_date_assigned(cache: MagicMock) -> None:
     cache.get_event = MagicMock(return_value=ev)
     cmd = build_command(cache)
     interaction = make_interaction()
-    with (
-        patch("src.commands.schedule.is_member", return_value=True),
-        patch("src.commands.schedule.is_host", return_value=True),
-    ):
+    with patch("src.commands.schedule.is_host", return_value=True):
         await cmd.callback(interaction, weeks=None, date="2025-06-10", user=None)
     args, _ = interaction.response.send_message.call_args
     assert "<@42>" in args[0]
@@ -90,10 +70,7 @@ async def test_schedule_specific_date_unassigned(cache: MagicMock) -> None:
     cache.get_event = MagicMock(return_value=None)
     cmd = build_command(cache)
     interaction = make_interaction()
-    with (
-        patch("src.commands.schedule.is_member", return_value=True),
-        patch("src.commands.schedule.is_host", return_value=True),
-    ):
+    with patch("src.commands.schedule.is_host", return_value=True):
         await cmd.callback(interaction, weeks=None, date="2025-06-10", user=None)
     args, _ = interaction.response.send_message.call_args
     assert "unassigned" in args[0]
@@ -105,7 +82,6 @@ async def test_schedule_empty_timeline(cache: MagicMock) -> None:
     cmd = build_command(cache)
     interaction = make_interaction()
     with (
-        patch("src.commands.schedule.is_member", return_value=True),
         patch("src.commands.schedule.is_host", return_value=True),
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 10)),
     ):
@@ -122,7 +98,6 @@ async def test_schedule_weeks_zero_falls_back_to_config_default(cache: MagicMock
     cmd = build_command(cache)
     interaction = make_interaction()
     with (
-        patch("src.commands.schedule.is_member", return_value=True),
         patch("src.commands.schedule.is_host", return_value=True),
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 10)),
     ):
@@ -139,7 +114,6 @@ async def test_schedule_truncates_output_beyond_60_lines(cache: MagicMock) -> No
     cmd = build_command(cache)
     interaction = make_interaction()
     with (
-        patch("src.commands.schedule.is_member", return_value=True),
         patch("src.commands.schedule.is_host", return_value=True),
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 1)),
     ):
@@ -160,7 +134,6 @@ async def test_schedule_filters_by_target_user(cache: MagicMock) -> None:
     target = MagicMock(spec=discord.User)
     target.id = 42
     with (
-        patch("src.commands.schedule.is_member", return_value=True),
         patch("src.commands.schedule.is_host", return_value=True),
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 1)),
     ):
@@ -177,7 +150,6 @@ async def test_schedule_no_matches_for_target_user(cache: MagicMock) -> None:
     target = MagicMock(spec=discord.User)
     target.id = 42
     with (
-        patch("src.commands.schedule.is_member", return_value=True),
         patch("src.commands.schedule.is_host", return_value=True),
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 1)),
     ):

@@ -79,7 +79,6 @@ DEFAULT_CONFIG_ROWS = [
     ("daily_check_time", "09:00", "string", "Time of day for daily warning check (HH:MM)"),
     ("daily_check_timezone", "America/Los_Angeles", "string", "IANA timezone"),
     ("schedule_window_weeks", "2", "integer", "Default weeks shown in /schedule"),
-    ("member_role_ids", "[]", "json", "Discord role IDs for members"),
     ("host_role_ids", "[]", "json", "Discord role IDs for hosts"),
     ("admin_role_ids", "[]", "json", "Discord role IDs for admins"),
     ("owner_user_ids", "[166793917461692416]", "json", "Discord user IDs with full bot access (owner/setup)"),
@@ -379,7 +378,7 @@ class SheetsService:
                            "schedule_window_weeks", "cache_ttl_seconds", "max_batch_size"):
                     if val:
                         setattr(config, key, int(val))
-                elif key in ("member_role_ids", "host_role_ids", "admin_role_ids", "owner_user_ids"):
+                elif key in ("host_role_ids", "admin_role_ids", "owner_user_ids"):
                     parsed = json.loads(val) if val else []
                     setattr(config, key, [int(x) for x in parsed] if parsed else [])
                 elif key in ("daily_check_time", "daily_check_timezone", "meeting_pattern"):
