@@ -9,6 +9,8 @@ from src.commands.sheet import sheet_url
 from src.services.cache_service import CacheService
 from src.utils.auth import is_admin
 
+GITHUB_URL = "https://github.com/zkysar/language-exchange-bot"
+
 BOT_DESCRIPTION = (
     "I help coordinate language-exchange hosting. "
     "See who's hosting, volunteer for open dates, "
@@ -89,7 +91,7 @@ def _build_embed(show_admin: bool, show_owner: bool) -> discord.Embed:
         heading, cmds = _OWNER_CATEGORY
         lines = "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
         embed.add_field(name=heading, value=lines, inline=False)
-    embed.set_footer(text=f"Sheet: {sheet_url()}")
+    embed.set_footer(text=f"Sheet: {sheet_url()} • GitHub: {GITHUB_URL}")
     return embed
 
 
@@ -109,7 +111,7 @@ def build_command(cache: CacheService) -> app_commands.Command:
     ) -> None:
         if command:
             text = COMMAND_HELP.get(command.value, COMMAND_HELP.get("schedule"))
-            text = f"{text}\n\nSheet: {sheet_url()}"
+            text = f"{text}\n\nSheet: {sheet_url()} • GitHub: {GITHUB_URL}"
             await interaction.response.send_message(text, ephemeral=True)
             return
 
