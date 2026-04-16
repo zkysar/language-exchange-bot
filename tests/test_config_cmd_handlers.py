@@ -1,27 +1,12 @@
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
-import discord
 import pytest
 from discord import app_commands
 
 from src.commands.config_cmd import build_command
-from src.models.models import Configuration
-
-
-def make_interaction(user_id: int = 1, guild: bool = True) -> MagicMock:
-    interaction = MagicMock(spec=discord.Interaction)
-    interaction.user = MagicMock(spec=discord.Member)
-    interaction.user.id = user_id
-    interaction.guild = MagicMock() if guild else None
-    interaction.namespace = MagicMock()
-    interaction.response = MagicMock()
-    interaction.response.send_message = AsyncMock()
-    interaction.response.defer = AsyncMock()
-    interaction.followup = MagicMock()
-    interaction.followup.send = AsyncMock()
-    return interaction
+from tests.helpers import make_interaction
 
 
 def action_choice(value: str) -> str:
@@ -30,19 +15,6 @@ def action_choice(value: str) -> str:
 
 def key_choice(value: str, label: str | None = None) -> app_commands.Choice[str]:
     return app_commands.Choice(name=label or value, value=value)
-
-
-@pytest.fixture
-def sheets() -> MagicMock:
-    return MagicMock()
-
-
-@pytest.fixture
-def cache() -> MagicMock:
-    c = MagicMock()
-    c.config = Configuration.default()
-    c.refresh = AsyncMock()
-    return c
 
 
 # ── auth guard ────────────────────────────────────────────────────────────────

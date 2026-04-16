@@ -11,20 +11,7 @@ from discord import app_commands
 from src.commands.hosting import _ConfirmView, _signup_date_autocomplete, build_command
 from src.models.models import Configuration, EventDate, RecurringPattern
 from src.services.warning_service import WarningItem
-
-
-def make_interaction(user_id: int = 1) -> MagicMock:
-    interaction = MagicMock(spec=discord.Interaction)
-    interaction.user = MagicMock(spec=discord.Member)
-    interaction.user.id = user_id
-    interaction.user.display_name = f"User{user_id}"
-    interaction.data = {"options": []}
-    interaction.response = MagicMock()
-    interaction.response.send_message = AsyncMock()
-    interaction.response.defer = AsyncMock()
-    interaction.followup = MagicMock()
-    interaction.followup.send = AsyncMock()
-    return interaction
+from tests.helpers import make_interaction
 
 
 @pytest.fixture
@@ -33,24 +20,6 @@ def sheets() -> MagicMock:
     s.write_lock = asyncio.Lock()
     s.delete_future_pattern_rows = MagicMock(return_value=2)
     return s
-
-
-@pytest.fixture
-def cache() -> MagicMock:
-    c = MagicMock()
-    c.config = Configuration.default()
-    c.refresh = AsyncMock()
-    c.all_events = MagicMock(return_value=[])
-    c.get_event = MagicMock(return_value=None)
-    c.upsert_event = MagicMock()
-    c.remove_event_assignment = MagicMock()
-    c.active_patterns_for = MagicMock(return_value=[])
-    c.deactivate_pattern = MagicMock()
-    c.add_pattern = MagicMock()
-    c.invalidate = MagicMock()
-    c.sheets = MagicMock()
-    c.sheets.load_schedule = MagicMock()
-    return c
 
 
 @pytest.fixture

@@ -1,38 +1,11 @@
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
-import discord
 import pytest
 
 from src.commands.sync import build_command
-from src.models.models import Configuration
-
-
-def make_interaction(user_id: int = 1) -> MagicMock:
-    interaction = MagicMock(spec=discord.Interaction)
-    interaction.user = MagicMock(spec=discord.Member)
-    interaction.user.id = user_id
-    interaction.response = MagicMock()
-    interaction.response.send_message = AsyncMock()
-    interaction.response.defer = AsyncMock()
-    interaction.followup = MagicMock()
-    interaction.followup.send = AsyncMock()
-    return interaction
-
-
-@pytest.fixture
-def sheets() -> MagicMock:
-    return MagicMock()
-
-
-@pytest.fixture
-def cache() -> MagicMock:
-    c = MagicMock()
-    c.config = Configuration.default()
-    c.refresh = AsyncMock()
-    c.all_events = MagicMock(return_value=[])
-    return c
+from tests.helpers import make_interaction
 
 
 @pytest.mark.asyncio
