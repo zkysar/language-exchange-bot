@@ -39,11 +39,11 @@ AUDIT_HEADERS = [
 CONFIG_HEADERS = ["setting_key", "setting_value", "setting_type", "description", "updated_at"]
 
 DEFAULT_CONFIG_ROWS = [
-    ("warning_passive_days", "7", "integer", "Days before event to post passive warning"),
-    ("warning_urgent_days", "3", "integer", "Days before event to post urgent warning"),
+    ("warning_passive_days", "4", "integer", "Days before event to post passive warning"),
+    ("warning_urgent_days", "1", "integer", "Days before event to post urgent warning"),
     ("daily_check_time", "09:00", "string", "Time of day for daily warning check (HH:MM)"),
     ("daily_check_timezone", "America/Los_Angeles", "string", "IANA timezone"),
-    ("schedule_window_weeks", "4", "integer", "Default weeks shown in /schedule"),
+    ("schedule_window_weeks", "2", "integer", "Default weeks shown in /schedule"),
     ("member_role_ids", "[]", "json", "Discord role IDs for members"),
     ("host_role_ids", "[]", "json", "Discord role IDs for hosts"),
     ("admin_role_ids", "[]", "json", "Discord role IDs for admins"),
