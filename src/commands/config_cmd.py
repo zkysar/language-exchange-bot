@@ -21,7 +21,16 @@ ROLE_BUCKETS: dict[str, str] = {
 }
 _ROLE_LABELS = {"admin": "Admin roles", "host": "Host roles", "member": "Member roles"}
 
-ACTION_CHOICES = [
+_SCALAR_ACTIONS = [
+    app_commands.Choice(name="get", value="get"),
+    app_commands.Choice(name="set", value="set"),
+]
+_LIST_ACTIONS = [
+    app_commands.Choice(name="get", value="get"),
+    app_commands.Choice(name="add", value="add"),
+    app_commands.Choice(name="remove", value="remove"),
+]
+_ALL_ACTIONS = [
     app_commands.Choice(name="get", value="get"),
     app_commands.Choice(name="set", value="set"),
     app_commands.Choice(name="add", value="add"),
@@ -40,23 +49,23 @@ KEY_CHOICES = [
 def build_command(sheets: SheetsService, cache: CacheService) -> app_commands.Command:
     @app_commands.command(name="config", description="View and change bot configuration")
     @app_commands.describe(
-        action="What to do (default: get)",
         key="Which setting or role bucket",
+        action="What to do (default: get)",
         value="New value, channel mention, or role mention",
     )
-    @app_commands.choices(action=ACTION_CHOICES, key=KEY_CHOICES)
+    @app_commands.choices(key=KEY_CHOICES)
     async def config(
         interaction: discord.Interaction,
-        action: app_commands.Choice[str] | None = None,
         key: app_commands.Choice[str] | None = None,
+        action: str | None = None,
         value: str | None = None,
     ) -> None:
         if not is_owner(interaction.user, cache.config):
             await interaction.response.send_message("This command is owner-only.", ephemeral=True)
             return
 
-        act = action.value if action else "get"
         key_val = key.value if key else None
+        act = action if action else "get"
 
         if act == "get":
             await _handle_get(interaction, cache, key_val)
@@ -68,6 +77,20 @@ def build_command(sheets: SheetsService, cache: CacheService) -> app_commands.Co
             await _handle_set(interaction, sheets, cache, key_val, value)
         elif act in ("add", "remove"):
             await _handle_role_mutation(interaction, sheets, cache, act, key_val, value)
+
+    @config.autocomplete("action")
+    async def _action_autocomplete(
+        interaction: discord.Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:
+        selected_key = getattr(interaction.namespace, "key", None)
+        if selected_key in ROLE_BUCKETS:
+            choices = _LIST_ACTIONS
+        elif selected_key in SETTINGS:
+            choices = _SCALAR_ACTIONS
+        else:
+            choices = _ALL_ACTIONS
+        lower = current.lower()
+        return [c for c in choices if lower in c.name]
 
     @config.autocomplete("value")
     async def _value_autocomplete(
