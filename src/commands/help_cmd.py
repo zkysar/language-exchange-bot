@@ -30,8 +30,6 @@ COMMAND_HELP = {
     "schedule": "Use `/schedule` to view the next N weeks (default 4, max 12). "
                 "Pass `date:YYYY-MM-DD` to check a single date, or `user:@x` to filter "
                 "to a specific user's dates (hosts/admins can view others).",
-    "warnings": "Use `/warnings` to see any unassigned dates within the warning window. "
-                "Response is always private.",
     "hosting": "Use `/hosting action:signup date:<date>` to claim an open date, "
                "`/hosting action:signup pattern:'every 2nd Tuesday'` to set up a recurring pattern, "
                "`/hosting action:cancel date:<date>` to cancel a date, or "
@@ -50,7 +48,6 @@ HELP_TEXT = {None: "", **COMMAND_HELP}
 _MEMBER_CATEGORIES = {
     "View Schedule": [
         ("/schedule [weeks] [date] [user]", "See upcoming hosts"),
-        ("/warnings", "Dates that still need a host"),
     ],
 }
 
@@ -91,7 +88,7 @@ _OWNER_CATEGORY = (
 
 _AUTOCOMPLETE_TIERS = [
     (None, ["sheet"]),
-    (is_member, ["schedule", "warnings"]),
+    (is_member, ["schedule"]),
     (is_host, ["hosting"]),
     (is_admin, ["sync", "reset"]),
     (is_owner, ["config", "setup"]),

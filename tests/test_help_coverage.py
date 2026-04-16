@@ -14,7 +14,6 @@ from src.commands import schedule as schedule_mod
 from src.commands import setup_wizard as setup_wizard_mod
 from src.commands import sheet as sheet_mod
 from src.commands import sync as sync_mod
-from src.commands import warnings_cmd as warnings_mod
 
 _UNDOCUMENTED_COMMANDS = {"help"}
 
@@ -29,7 +28,6 @@ def _build_tree() -> app_commands.CommandTree:
     tree = app_commands.CommandTree(client)
     tree.add_command(hosting_mod.build_command(sheets, cache, warnings))
     tree.add_command(schedule_mod.build_command(cache))
-    tree.add_command(warnings_mod.build_command(cache, warnings))
     tree.add_command(sync_mod.build_command(sheets, cache))
     tree.add_command(reset_mod.build_command(sheets, cache))
     tree.add_command(config_mod.build_group(sheets, cache))
