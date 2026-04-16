@@ -17,9 +17,8 @@ BOT_DESCRIPTION = (
 
 COMMAND_HELP = {
     "schedule": "Use `/schedule` to view the next N weeks (default 4, max 12). "
-                "Pass `date:YYYY-MM-DD` to check a single date.",
-    "listdates": "Use `/listdates` to view your upcoming dates, or `/listdates user:@x` "
-                 "(hosts/admins only) to view another user.",
+                "Pass `date:YYYY-MM-DD` to check a single date, or `user:@x` to filter "
+                "to a specific user's dates (hosts/admins can view others).",
     "warnings": "Use `/warnings` to see any unassigned dates within the warning window. "
                 "Response is always private.",
     "volunteer": "Use `/volunteer date` to claim an open date from the autocomplete dropdown, "
@@ -28,6 +27,9 @@ COMMAND_HELP = {
                    "`/unvolunteer recurring` to cancel a recurring pattern (clears future dates).",
     "sheet": "Shows the URL of the backing Google Sheet. You need to be "
              "granted view access to actually open it.",
+    "config": "Owner-only. Use `/config show` to see all settings, or `/config warnings`, "
+              "`/config schedule`, `/config channels`, `/config roles` to change values.",
+    "setup": "Owner-only. Guided wizard that walks through all essential bot configuration.",
     "sync": "Admin-only. Forces a full resync of local cache from Google Sheets.",
     "reset": "Admin-only. Displays the reset procedure and requires confirmation.",
 }
@@ -36,8 +38,7 @@ HELP_TEXT = {None: "", **COMMAND_HELP}
 
 _CATEGORIES = {
     "View Schedule": [
-        ("/schedule [weeks] [date]", "See upcoming hosts"),
-        ("/listdates [user]", "Your upcoming dates"),
+        ("/schedule [weeks] [date] [user]", "See upcoming hosts"),
         ("/warnings", "Dates that still need a host"),
     ],
     "Volunteer": [
@@ -60,8 +61,17 @@ _ADMIN_CATEGORY = (
     ],
 )
 
+_OWNER_CATEGORY = (
+    "Owner",
+    [
+        ("/config show", "View all configuration"),
+        ("/config <group> <setting>", "Change a setting"),
+        ("/setup", "Guided setup wizard"),
+    ],
+)
 
-def _build_embed(show_admin: bool) -> discord.Embed:
+
+def _build_embed(show_admin: bool, show_owner: bool) -> discord.Embed:
     embed = discord.Embed(
         title="Host Scheduler",
         description=BOT_DESCRIPTION,
@@ -72,6 +82,10 @@ def _build_embed(show_admin: bool) -> discord.Embed:
         embed.add_field(name=heading, value=lines, inline=False)
     if show_admin:
         heading, cmds = _ADMIN_CATEGORY
+        lines = "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
+        embed.add_field(name=heading, value=lines, inline=False)
+    if show_owner:
+        heading, cmds = _OWNER_CATEGORY
         lines = "\n".join(f"`{c}` — {desc}" for c, desc in cmds)
         embed.add_field(name=heading, value=lines, inline=False)
     embed.set_footer(text=f"Sheet: {sheet_url()}")
@@ -98,8 +112,10 @@ def build_command(cache: CacheService) -> app_commands.Command:
             await interaction.response.send_message(text, ephemeral=True)
             return
 
+        from src.utils.auth import is_owner
         show_admin = is_admin(interaction.user, cache.config)
-        embed = _build_embed(show_admin)
+        show_owner = is_owner(interaction.user, cache.config)
+        embed = _build_embed(show_admin, show_owner)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     return help_cmd

@@ -9,10 +9,10 @@ from discord import app_commands
 from discord.ext import tasks
 
 from src.commands import help_cmd as help_mod
-from src.commands import listdates as listdates_mod
 from src.commands import reset as reset_mod
 from src.commands import schedule as schedule_mod
-from src.commands import setup as setup_mod
+from src.commands import config_cmd as config_mod
+from src.commands import setup_wizard as setup_wizard_mod
 from src.commands import sheet as sheet_mod
 from src.commands import sync as sync_mod
 from src.commands import unvolunteer as unvolunteer_mod
@@ -43,18 +43,28 @@ class SchedulerBot(discord.Client):
         self.tree.add_command(volunteer_mod.build_group(self.sheets, self.cache))
         self.tree.add_command(unvolunteer_mod.build_group(self.sheets, self.cache, self.warnings))
         self.tree.add_command(schedule_mod.build_command(self.cache))
-        self.tree.add_command(listdates_mod.build_command(self.cache))
         self.tree.add_command(warnings_mod.build_command(self.cache, self.warnings))
         self.tree.add_command(sync_mod.build_command(self.sheets, self.cache))
         self.tree.add_command(reset_mod.build_command(self.sheets, self.cache))
-        self.tree.add_command(setup_mod.build_group(self.sheets, self.cache))
+        self.tree.add_command(config_mod.build_group(self.sheets, self.cache))
+        self.tree.add_command(setup_wizard_mod.build_command(self.sheets, self.cache))
         self.tree.add_command(sheet_mod.build_command())
         self.tree.add_command(help_mod.build_command(self.cache))
 
     async def setup_hook(self) -> None:
+        self.tree.interaction_check = self._guild_only_check
         await self.tree.sync()
         log.info("slash commands synced")
         self._start_daily_check()
+
+    async def _guild_only_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "This bot only works in a server. Please use commands in a server channel.",
+                ephemeral=True,
+            )
+            return False
+        return True
 
     async def on_ready(self) -> None:
         log.info("bot ready as %s (%s)", self.user, self.user.id if self.user else "?")
