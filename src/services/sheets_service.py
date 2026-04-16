@@ -47,6 +47,7 @@ DEFAULT_CONFIG_ROWS = [
     ("member_role_ids", "[]", "json", "Discord role IDs for members"),
     ("host_role_ids", "[]", "json", "Discord role IDs for hosts"),
     ("admin_role_ids", "[]", "json", "Discord role IDs for admins"),
+    ("owner_user_ids", "[166793917461692416]", "json", "Discord user IDs with full bot access (owner/setup)"),
     ("schedule_channel_id", "", "string", "Discord channel ID for schedule posts"),
     ("warnings_channel_id", "", "string", "Discord channel ID for warning posts"),
     ("cache_ttl_seconds", "300", "integer", "Cache TTL in seconds"),
@@ -110,7 +111,7 @@ class SheetsService:
                            "schedule_window_weeks", "cache_ttl_seconds", "max_batch_size"):
                     if val:
                         setattr(config, key, int(val))
-                elif key in ("member_role_ids", "host_role_ids", "admin_role_ids"):
+                elif key in ("member_role_ids", "host_role_ids", "admin_role_ids", "owner_user_ids"):
                     parsed = json.loads(val) if val else []
                     setattr(config, key, [int(x) for x in parsed] if parsed else [])
                 elif key in ("daily_check_time", "daily_check_timezone"):
@@ -121,6 +122,16 @@ class SheetsService:
             except (ValueError, json.JSONDecodeError) as e:
                 log.warning("bad config %s=%r: %s", key, val, e)
         return config
+
+    def update_configuration(self, key: str, value: str, type_: str = "json") -> None:
+        ws = self._get_or_create("Configuration", CONFIG_HEADERS)
+        rows = ws.get_all_values()
+        now = datetime.now(timezone.utc).isoformat()
+        for idx, row in enumerate(rows[1:], start=2):
+            if row and row[0].strip() == key:
+                ws.update(f"B{idx}:E{idx}", [[value, type_, row[3] if len(row) > 3 else "", now]])
+                return
+        ws.append_row([key, value, type_, "", now])
 
     # -- schedule --
     def load_schedule(self) -> List[EventDate]:

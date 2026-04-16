@@ -64,6 +64,7 @@ class Configuration:
     member_role_ids: List[int] = field(default_factory=list)
     host_role_ids: List[int] = field(default_factory=list)
     admin_role_ids: List[int] = field(default_factory=list)
+    owner_user_ids: List[int] = field(default_factory=list)
     schedule_channel_id: Optional[str] = None
     warnings_channel_id: Optional[str] = None
     cache_ttl_seconds: int = 300
