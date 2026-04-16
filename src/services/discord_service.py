@@ -58,6 +58,32 @@ class SchedulerBot(discord.Client):
 
     async def on_ready(self) -> None:
         log.info("bot ready as %s (%s)", self.user, self.user.id if self.user else "?")
+        await self._sync_avatar()
+
+    async def _sync_avatar(self) -> None:
+        from hashlib import sha256
+        from pathlib import Path
+
+        import cairosvg
+
+        icon_path = Path(__file__).resolve().parents[2] / "assets" / "bot-icon.svg"
+        if not icon_path.exists():
+            log.warning("bot icon not found at %s", icon_path)
+            return
+
+        svg_bytes = icon_path.read_bytes()
+        png_bytes = cairosvg.svg2png(bytestring=svg_bytes, output_width=512, output_height=512)
+        new_hash = sha256(png_bytes).hexdigest()[:16]
+
+        if getattr(self, "_avatar_hash", None) == new_hash:
+            return
+
+        try:
+            await self.user.edit(avatar=png_bytes)
+            self._avatar_hash = new_hash
+            log.info("bot avatar updated")
+        except Exception:
+            log.warning("failed to update avatar (rate-limited?)", exc_info=True)
 
     def _start_daily_check(self) -> None:
         @tasks.loop(minutes=1)

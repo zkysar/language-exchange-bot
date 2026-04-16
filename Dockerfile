@@ -5,11 +5,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libcairo2 && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY src ./src
+COPY assets ./assets
 
 CMD ["python", "-m", "src.bot"]
