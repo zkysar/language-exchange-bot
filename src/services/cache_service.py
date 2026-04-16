@@ -63,6 +63,9 @@ class CacheService:
     def active_patterns_for(self, discord_id: str) -> List[RecurringPattern]:
         return [p for p in self._patterns.values() if p.is_active and p.host_discord_id == discord_id]
 
+    def all_active_patterns(self) -> List[RecurringPattern]:
+        return [p for p in self._patterns.values() if p.is_active]
+
     def add_pattern(self, pattern: RecurringPattern) -> None:
         self._patterns[pattern.pattern_id] = pattern
 
