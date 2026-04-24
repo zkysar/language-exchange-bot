@@ -16,6 +16,10 @@ def _channel_mention(cid: Optional[str]) -> str:
     return f"<#{cid}>" if cid else "*not set*"
 
 
+def _nullable_int_display(n: Optional[int]) -> str:
+    return str(n) if n is not None else "*off*"
+
+
 def _role_mentions(guild: Optional[discord.Guild], ids: list[int]) -> str:
     if not ids:
         return "*none*"
@@ -66,19 +70,39 @@ class SetupWizardView(ui.View):
     def _build_schedule_embed(self) -> discord.Embed:
         cfg = self.cache.config
         embed = discord.Embed(
-            title="Setup — Step 3/4: Schedule Settings",
-            description="How should warnings work?\n\nUse defaults or customize each setting.",
+            title="Setup — Step 3/4: Announcements",
+            description="How should scheduled posts and warnings work?\n\nUse defaults or customize each setting.",
             color=discord.Color.blue(),
         )
         embed.add_field(name="Daily check time", value=cfg.daily_check_time, inline=True)
         embed.add_field(name="Timezone", value=cfg.daily_check_timezone, inline=True)
-        embed.add_field(name="Passive warning days", value=str(cfg.warning_passive_days), inline=True)
-        embed.add_field(name="Urgent warning days", value=str(cfg.warning_urgent_days), inline=True)
-        embed.add_field(name="Schedule window", value=f"{cfg.schedule_window_weeks} weeks", inline=True)
+        embed.add_field(
+            name="Schedule post interval (days)",
+            value=_nullable_int_display(cfg.schedule_announcement_interval_days),
+            inline=True,
+        )
+        embed.add_field(
+            name="Passive warning days",
+            value=_nullable_int_display(cfg.warning_passive_days),
+            inline=True,
+        )
+        embed.add_field(
+            name="Urgent warning days",
+            value=_nullable_int_display(cfg.warning_urgent_days),
+            inline=True,
+        )
         embed.add_field(
             name="Meeting schedule",
             value=cfg.meeting_schedule or "*not set*",
             inline=True,
+        )
+        embed.add_field(
+            name="Advanced (use /config set)",
+            value=(
+                f"Lookahead weeks: {_nullable_int_display(cfg.schedule_announcement_lookahead_weeks)}\n"
+                f"Schedule window: {cfg.schedule_window_weeks} weeks"
+            ),
+            inline=False,
         )
         return embed
 
@@ -104,13 +128,22 @@ class SetupWizardView(ui.View):
             inline=False,
         )
         embed.add_field(
-            name="Schedule",
+            name="Announcements",
             value=(
                 f"Check time: {cfg.daily_check_time} ({cfg.daily_check_timezone})\n"
-                f"Passive warning: {cfg.warning_passive_days} days\n"
-                f"Urgent warning: {cfg.warning_urgent_days} days\n"
-                f"Window: {cfg.schedule_window_weeks} weeks\n"
+                f"Schedule post every: {_nullable_int_display(cfg.schedule_announcement_interval_days)} days\n"
+                f"Schedule post lookahead: {_nullable_int_display(cfg.schedule_announcement_lookahead_weeks)} weeks\n"
+                f"Passive warning: {_nullable_int_display(cfg.warning_passive_days)} days\n"
+                f"Urgent warning: {_nullable_int_display(cfg.warning_urgent_days)} days\n"
                 f"Meeting schedule: {cfg.meeting_schedule or '*not set*'}"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="Schedule window",
+            value=(
+                f"{cfg.schedule_window_weeks} weeks "
+                "(set via `/config set schedule_window_weeks <n>`)"
             ),
             inline=False,
         )
@@ -237,12 +270,27 @@ class _ChannelSelectForSetting(ui.ChannelSelect):
             await interaction.response.send_message("No channel selected.", ephemeral=True)
 
 
-class _ScheduleModal(ui.Modal, title="Customize Schedule Settings"):
+class _ScheduleModal(ui.Modal, title="Customize Announcements"):
     check_time = ui.TextInput(label="Daily check time (HH:MM)", placeholder="09:00", max_length=5)
     timezone = ui.TextInput(label="Timezone (IANA)", placeholder="America/Los_Angeles", max_length=50)
-    passive_days = ui.TextInput(label="Passive warning days (1-30)", placeholder="7", max_length=2)
-    urgent_days = ui.TextInput(label="Urgent warning days (1-14)", placeholder="3", max_length=2)
-    window_weeks = ui.TextInput(label="Schedule window weeks (1-12)", placeholder="4", max_length=2)
+    interval_days = ui.TextInput(
+        label="Schedule post interval (days, blank=off)",
+        placeholder="30",
+        max_length=3,
+        required=False,
+    )
+    passive_days = ui.TextInput(
+        label="Passive warning days (1-30, blank=off)",
+        placeholder="4",
+        max_length=2,
+        required=False,
+    )
+    urgent_days = ui.TextInput(
+        label="Urgent warning days (1-14, blank=off)",
+        placeholder="1",
+        max_length=2,
+        required=False,
+    )
 
     def __init__(self, wizard: SetupWizardView) -> None:
         super().__init__()
@@ -250,9 +298,17 @@ class _ScheduleModal(ui.Modal, title="Customize Schedule Settings"):
         cfg = wizard.cache.config
         self.check_time.default = cfg.daily_check_time
         self.timezone.default = cfg.daily_check_timezone
-        self.passive_days.default = str(cfg.warning_passive_days)
-        self.urgent_days.default = str(cfg.warning_urgent_days)
-        self.window_weeks.default = str(cfg.schedule_window_weeks)
+        self.interval_days.default = (
+            str(cfg.schedule_announcement_interval_days)
+            if cfg.schedule_announcement_interval_days is not None
+            else ""
+        )
+        self.passive_days.default = (
+            str(cfg.warning_passive_days) if cfg.warning_passive_days is not None else ""
+        )
+        self.urgent_days.default = (
+            str(cfg.warning_urgent_days) if cfg.warning_urgent_days is not None else ""
+        )
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         errors: list[str] = []
@@ -261,9 +317,9 @@ class _ScheduleModal(ui.Modal, title="Customize Schedule Settings"):
         for key, field_value in [
             ("daily_check_time", self.check_time.value),
             ("daily_check_timezone", self.timezone.value),
+            ("schedule_announcement_interval_days", self.interval_days.value),
             ("warning_passive_days", self.passive_days.value),
             ("warning_urgent_days", self.urgent_days.value),
-            ("schedule_window_weeks", self.window_weeks.value),
         ]:
             ok, val, err = validate_setting(key, field_value.strip())
             if ok:

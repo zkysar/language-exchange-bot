@@ -7,7 +7,7 @@ from src.utils.config_meta import SETTINGS, SettingMeta, validate_setting
 def test_all_settings_have_required_fields():
     for key, meta in SETTINGS.items():
         assert isinstance(meta, SettingMeta), f"{key} is not SettingMeta"
-        assert meta.group in ("warnings", "schedule", "channels", "roles")
+        assert meta.group in ("announcements", "schedule", "roles")
         assert meta.label
         assert meta.config_key
         assert meta.setting_type in ("integer", "time", "timezone", "channel", "pattern")
@@ -106,8 +106,55 @@ def test_config_meta_has_single_announcement_channel_entry():
     assert "schedule_channel_id" not in SETTINGS
     assert "warnings_channel_id" not in SETTINGS
     meta = SETTINGS["announcement_channel_id"]
-    assert meta.group == "channels"
+    assert meta.group == "announcements"
     assert meta.setting_type == "channel"
     assert meta.config_key == "announcement_channel_id"
     assert meta.sheets_type == "string"
     assert meta.label == "Announcement channel"
+
+
+def test_nullable_integer_accepts_empty():
+    ok, val, err = validate_setting("warning_passive_days", "")
+    assert ok is True
+    assert val == ""
+    assert err is None
+
+
+def test_nullable_integer_accepts_numeric():
+    ok, val, err = validate_setting("warning_passive_days", "7")
+    assert ok is True
+    assert val == "7"
+
+
+def test_non_nullable_integer_rejects_empty():
+    ok, val, err = validate_setting("schedule_window_weeks", "")
+    assert ok is False
+
+
+def test_schedule_announcement_keys_present():
+    assert "schedule_announcement_interval_days" in SETTINGS
+    assert "schedule_announcement_lookahead_weeks" in SETTINGS
+    interval = SETTINGS["schedule_announcement_interval_days"]
+    assert interval.group == "announcements"
+    assert interval.nullable is True
+    lookahead = SETTINGS["schedule_announcement_lookahead_weeks"]
+    assert lookahead.group == "announcements"
+    assert lookahead.nullable is True
+
+
+def test_warning_keys_are_nullable_and_in_announcements():
+    for key in ("warning_passive_days", "warning_urgent_days"):
+        meta = SETTINGS[key]
+        assert meta.group == "announcements", f"{key} should be in announcements group"
+        assert meta.nullable is True, f"{key} should be nullable"
+
+
+def test_validate_nullable_interval_empty():
+    ok, val, err = validate_setting("schedule_announcement_interval_days", "")
+    assert ok is True
+    assert val == ""
+
+
+def test_validate_nullable_interval_out_of_range():
+    ok, val, err = validate_setting("schedule_announcement_interval_days", "500")
+    assert ok is False

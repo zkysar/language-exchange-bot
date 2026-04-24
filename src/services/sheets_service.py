@@ -74,8 +74,11 @@ AUDIT_HEADERS = [
 CONFIG_HEADERS = ["setting_key", "setting_value", "setting_type", "description", "updated_at"]
 
 DEFAULT_CONFIG_ROWS = [
-    ("warning_passive_days", "4", "integer", "Days before event to post passive warning"),
-    ("warning_urgent_days", "1", "integer", "Days before event to post urgent warning"),
+    ("warning_passive_days", "4", "integer", "Days before event to post passive warning, empty = off"),
+    ("warning_urgent_days", "1", "integer", "Days before event to post urgent warning, empty = off"),
+    ("schedule_announcement_interval_days", "30", "integer", "Days between schedule announcement posts, empty = off"),
+    ("schedule_announcement_lookahead_weeks", "4", "integer", "Weeks ahead to list in each schedule announcement, empty = off"),
+    ("last_schedule_announcement_at", "", "string", "Internal: timestamp of last schedule announcement. Clear this cell to force a re-post on the next tick."),
     ("daily_check_time", "09:00", "string", "Time of day for daily warning check (HH:MM)"),
     ("daily_check_timezone", "America/Los_Angeles", "string", "IANA timezone"),
     ("schedule_window_weeks", "2", "integer", "Default weeks shown in /schedule"),
@@ -375,13 +378,41 @@ class SheetsService:
             if not key:
                 continue
             try:
-                if key in ("warning_passive_days", "warning_urgent_days",
-                           "schedule_window_weeks", "cache_ttl_seconds", "max_batch_size"):
+                nullable_int_keys = (
+                    "warning_passive_days",
+                    "warning_urgent_days",
+                    "schedule_announcement_interval_days",
+                    "schedule_announcement_lookahead_weeks",
+                )
+                strict_int_keys = (
+                    "schedule_window_weeks",
+                    "cache_ttl_seconds",
+                    "max_batch_size",
+                )
+                if key in nullable_int_keys:
+                    setattr(config, key, int(val) if val else None)
+                elif key in strict_int_keys:
                     if val:
                         setattr(config, key, int(val))
+                elif key == "last_schedule_announcement_at":
+                    if val:
+                        try:
+                            parsed = datetime.fromisoformat(val)
+                        except ValueError:
+                            log.warning(
+                                "bad last_schedule_announcement_at=%r; treating as unset", val
+                            )
+                        else:
+                            if parsed.tzinfo is None:
+                                log.warning(
+                                    "last_schedule_announcement_at=%r is timezone-naive; treating as unset",
+                                    val,
+                                )
+                            else:
+                                config.last_schedule_announcement_at = parsed
                 elif key in ("host_role_ids", "admin_role_ids", "owner_user_ids"):
-                    parsed = json.loads(val) if val else []
-                    setattr(config, key, [int(x) for x in parsed] if parsed else [])
+                    parsed_list = json.loads(val) if val else []
+                    setattr(config, key, [int(x) for x in parsed_list] if parsed_list else [])
                 elif key in ("daily_check_time", "daily_check_timezone", "meeting_schedule"):
                     if val:
                         setattr(config, key, val)

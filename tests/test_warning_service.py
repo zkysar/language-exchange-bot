@@ -151,6 +151,44 @@ async def test_warnings_unset_schedule_warns_every_day(make_cache):
     assert len(items) == 8
 
 
+# ── nullable warning days (empty = off) ───────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_both_warning_days_none_produces_no_warnings(make_cache, today):
+    config = Configuration(warning_urgent_days=None, warning_passive_days=None)
+    cache = make_cache(config=config)
+    svc = WarningService(cache)
+    with patch("src.services.warning_service.today_la", return_value=today):
+        items = await svc.check(window_weeks=2)
+    assert items == []
+
+
+@pytest.mark.asyncio
+async def test_only_urgent_configured(make_cache, today):
+    config = Configuration(warning_urgent_days=2, warning_passive_days=None)
+    cache = make_cache(config=config)
+    svc = WarningService(cache)
+    with patch("src.services.warning_service.today_la", return_value=today):
+        items = await svc.check(window_weeks=2)
+    # Only urgent (days 0,1,2) — nothing passive
+    assert all(i.severity == "urgent" for i in items)
+    assert all(i.days_until <= 2 for i in items)
+    assert len(items) == 3
+
+
+@pytest.mark.asyncio
+async def test_only_passive_configured(make_cache, today):
+    config = Configuration(warning_urgent_days=None, warning_passive_days=3)
+    cache = make_cache(config=config)
+    svc = WarningService(cache)
+    with patch("src.services.warning_service.today_la", return_value=today):
+        items = await svc.check(window_weeks=2)
+    # Only passive (days 0..3), no urgent bucket
+    assert all(i.severity == "passive" for i in items)
+    assert all(i.days_until <= 3 for i in items)
+    assert len(items) == 4
+
+
 @pytest.mark.asyncio
 async def test_warnings_malformed_schedule_falls_back_to_all_days(make_cache):
     today = date(2026, 4, 1)

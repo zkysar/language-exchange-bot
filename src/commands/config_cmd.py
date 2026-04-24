@@ -163,21 +163,25 @@ async def _handle_get(
         meeting_display = (
             f"**{cfg.meeting_schedule}**" if cfg.meeting_schedule else "*not set*"
         )
+
+        def _nullable_int(n: int | None) -> str:
+            return f"**{n}**" if n is not None else "*off*"
+
         lines = [
             "**Configuration**",
             "",
-            "**Warnings**",
-            f"  Passive warning days: **{cfg.warning_passive_days}**",
-            f"  Urgent warning days: **{cfg.warning_urgent_days}**",
+            "**Announcements**",
+            f"  Schedule post interval (days): {_nullable_int(cfg.schedule_announcement_interval_days)}",
+            f"  Schedule post lookahead (weeks): {_nullable_int(cfg.schedule_announcement_lookahead_weeks)}",
+            f"  Passive warning days: {_nullable_int(cfg.warning_passive_days)}",
+            f"  Urgent warning days: {_nullable_int(cfg.warning_urgent_days)}",
+            f"  Announcement channel: {_channel_mention(cfg.announcement_channel_id)}",
             "",
             "**Schedule**",
             f"  Window weeks: **{cfg.schedule_window_weeks}**",
             f"  Daily check time: **{cfg.daily_check_time}**",
             f"  Timezone: **{cfg.daily_check_timezone}**",
             f"  Meeting schedule: {meeting_display}",
-            "",
-            "**Channel**",
-            f"  Announcement channel: {_channel_mention(cfg.announcement_channel_id)}",
             "",
             "**Roles**",
             f"  Admin: {_role_mentions(cfg.admin_role_ids)}",

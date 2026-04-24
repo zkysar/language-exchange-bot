@@ -15,15 +15,72 @@ from src.commands import hosting as hosting_mod
 from src.commands import schedule as schedule_mod
 from src.commands import setup_wizard as setup_wizard_mod
 from src.commands import sync as sync_mod
-from src.models.models import EventDate
+from src.models.models import Configuration, EventDate
 from src.services.cache_service import CacheService
 from src.services.sheets_service import SheetsService, make_audit
 from src.services.warning_service import WarningService
 from src.utils.date_parser import format_display, today_la
 from src.utils.logger import get_logger
+from src.utils.meeting_schedule import generate_meeting_dates
 from src.utils.pattern_parser import generate_dates, parse_pattern
 
 log = get_logger(__name__)
+
+
+def should_post_schedule(
+    config: Configuration,
+    now: datetime,
+    last_at: Optional[datetime],
+) -> bool:
+    """Pure due-check for the recurring schedule announcement.
+
+    `now` must be timezone-aware. `last_at` is either None or tz-aware
+    (the sheets loader rejects tz-naive values).
+    """
+    interval_days = config.schedule_announcement_interval_days
+    lookahead_weeks = config.schedule_announcement_lookahead_weeks
+    if not interval_days or not lookahead_weeks:
+        return False
+    try:
+        target_hour, target_minute = map(int, config.daily_check_time.split(":"))
+    except ValueError:
+        return False
+    if (now.hour, now.minute) < (target_hour, target_minute):
+        return False
+    if last_at is None:
+        return True
+    return (now - last_at) >= timedelta(days=interval_days)
+
+
+def build_schedule_lines(
+    config: Configuration,
+    events_by_date: dict[date, EventDate],
+    start: date,
+    lookahead_weeks: int,
+) -> Optional[list[str]]:
+    """Build the schedule announcement body, or None if there's nothing to post."""
+    end = start + timedelta(days=lookahead_weeks * 7 - 1)
+    meeting_dates = generate_meeting_dates(config, start, end)
+    if meeting_dates is not None and not meeting_dates:
+        return None
+    header = (
+        f"🗓️ **Upcoming schedule ({lookahead_weeks}w)** — "
+        f"{format_display(start)} to {format_display(end)}"
+    )
+    lines = [header]
+    day = start
+    while day <= end:
+        if meeting_dates is not None and day not in meeting_dates:
+            day += timedelta(days=1)
+            continue
+        ev = events_by_date.get(day)
+        if ev and ev.is_assigned:
+            who = f"<@{ev.host_discord_id}>" if ev.host_discord_id else ev.host_username
+            lines.append(f"- {format_display(day)} — {who}")
+        else:
+            lines.append(f"- {format_display(day)} — *open*")
+        day += timedelta(days=1)
+    return lines
 
 
 class SchedulerBot(discord.Client):
@@ -38,6 +95,7 @@ class SchedulerBot(discord.Client):
         self._register_commands()
         self._daily_task: Optional[tasks.Loop] = None
         self._last_warning_date: Optional[date] = None
+        self._last_schedule_post_at: Optional[datetime] = None
 
     def _register_commands(self) -> None:
         self.tree.add_command(hosting_mod.build_command(self.sheets, self.cache, self.warnings))
@@ -98,10 +156,15 @@ class SchedulerBot(discord.Client):
                 config = self.cache.config
                 tz = ZoneInfo(config.daily_check_timezone)
                 now = datetime.now(tz)
+                today = today_la()
+
+                # Schedule announcement: state-based trigger, independent of warnings.
+                await self._maybe_post_schedule_announcement(config, now, today)
+
+                # Warnings: strict-minute trigger + in-memory once-per-day guard.
                 target_hour, target_minute = map(int, config.daily_check_time.split(":"))
                 if now.hour != target_hour or now.minute != target_minute:
                     return
-                today = today_la()
                 if self._last_warning_date == today:
                     return
                 self._last_warning_date = today
@@ -131,6 +194,45 @@ class SchedulerBot(discord.Client):
 
         daily_check_loop.start()
         self._daily_task = daily_check_loop
+
+    async def _maybe_post_schedule_announcement(
+        self, config: Configuration, now: datetime, today: date
+    ) -> None:
+        channel_id = config.announcement_channel_id
+        if not channel_id:
+            return
+        last_at = self._last_schedule_post_at or config.last_schedule_announcement_at
+        if not should_post_schedule(config, now, last_at):
+            return
+        # Stamp in-memory guard BEFORE any await to prevent same-process double-fire
+        # while the sheet writeback + cache refresh are in flight.
+        self._last_schedule_post_at = now
+        try:
+            await self.cache.refresh()
+            events_by_date = {e.date: e for e in self.cache.all_events()}
+            lines = build_schedule_lines(
+                config,
+                events_by_date,
+                today,
+                config.schedule_announcement_lookahead_weeks,
+            )
+            if not lines:
+                return
+            channel = self.get_channel(int(channel_id))
+            if not channel:
+                return
+            await channel.send("\n".join(lines))
+            async with self.sheets.write_lock:
+                await asyncio.get_running_loop().run_in_executor(
+                    None,
+                    self.sheets.update_configuration,
+                    "last_schedule_announcement_at",
+                    now.isoformat(),
+                    "string",
+                )
+            await self.cache.refresh(force=True)
+        except Exception:
+            log.exception("schedule announcement failed")
 
     async def _extend_recurring_patterns(self) -> None:
         """Ensure active recurring patterns have dates through the next 26 weeks."""

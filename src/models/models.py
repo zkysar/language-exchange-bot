@@ -56,8 +56,11 @@ class AuditEntry:
 
 @dataclass
 class Configuration:
-    warning_passive_days: int = 4
-    warning_urgent_days: int = 1
+    warning_passive_days: Optional[int] = 4
+    warning_urgent_days: Optional[int] = 1
+    schedule_announcement_interval_days: Optional[int] = 30
+    schedule_announcement_lookahead_weeks: Optional[int] = 4
+    last_schedule_announcement_at: Optional[datetime] = None
     daily_check_time: str = "09:00"
     daily_check_timezone: str = "America/Los_Angeles"
     schedule_window_weeks: int = 2
