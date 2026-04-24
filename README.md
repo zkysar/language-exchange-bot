@@ -26,15 +26,18 @@ value clears it).
 
 ## Commands
 
-- `/schedule [weeks] [date] [user]` — upcoming schedule; filter by date or user
-- `/warnings` — check unassigned dates (ephemeral)
-- `/hosting action:signup date:<date>` — claim an open date
-- `/hosting action:signup pattern:<pattern>` — set a recurring pattern (e.g. `every 2nd Tuesday`)
-- `/hosting action:cancel date:<date>` — cancel a specific date
-- `/hosting action:cancel pattern:<pattern>` — cancel a recurring pattern
-- `/config show|set|roles` — (owner) view or change configuration
-- `/setup` — (owner) guided setup wizard
-- `/sync` — (admin) force resync
-- `/help [command]` — help
+Every command description is prefixed with 🔒 (reply private to you) or 👥 (reply
+visible to the whole channel). Bot replies carry the matching glyph.
+
+- `/schedule [weeks] [date] [user] [public]` — 🔒 upcoming schedule; pass
+  `public:true` to share the reply with the channel (👥)
+- `/hosting action:signup date:<date>` — 👥 claim an open date
+- `/hosting action:signup pattern:<pattern>` — 👥 set a recurring pattern (e.g. `every 2nd Tuesday`)
+- `/hosting action:cancel date:<date>` — 👥 cancel a specific date
+- `/hosting action:cancel pattern:<pattern>` — 👥 cancel a recurring pattern
+- `/config show|set|roles` — 🔒 (owner) view or change configuration
+- `/setup` — 🔒 (owner) guided setup wizard
+- `/sync` — 🔒 (admin) force resync
+- `/help [command]` — 🔒 help
 
 All dates are interpreted and displayed in `America/Los_Angeles`.

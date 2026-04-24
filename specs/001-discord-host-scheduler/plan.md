@@ -128,8 +128,9 @@ Running multiple instances simultaneously is unsupported. Operators must stop th
 ### Principle IX: Authentication & Authorization ✅
 - **Status**: COMPLIANT
   - Three-tier role-based access control via Discord roles (role IDs in Configuration sheet: `member_role_ids`, `host_role_ids`, `admin_role_ids`)
-  - Members: view schedule, view own dates; responses are ephemeral (only visible to invoking user)
-  - Hosts: member capabilities plus volunteer/unvolunteer self and others, run warnings
+  - All command replies are ephemeral by default for every tier; `/schedule` accepts an optional `public:true` flag to opt into a channel-visible reply, and write-action commands (`/hosting` signup/cancel) post public confirmations.
+  - Members: view schedule, view own dates
+  - Hosts: member capabilities plus volunteer/unvolunteer self and others
   - Admins: host capabilities plus force sync, reset, diagnostic commands, direct sheet operations
   - Role membership is managed in Discord; role→tier mapping is edited directly in the Configuration sheet (no bot commands to add/remove roles)
   - Authorization failures logged with user ID, command, timestamp
