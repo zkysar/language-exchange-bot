@@ -179,6 +179,8 @@ When the database becomes corrupted or inconsistent, an administrator needs to r
 - **FR-009**: System MUST display upcoming schedule for configurable time window. `/schedule` accepts an optional `weeks` parameter (default 4, maximum 12).
 - **FR-010**: System MUST run daily automated checks for unassigned dates at configurable time
 - **FR-011**: System MUST post warnings for unassigned dates with severity based on days until event (7+ days: passive, 3 days: urgent)
+- **FR-011a**: Warning thresholds (`warning_passive_days`, `warning_urgent_days`) MAY be left empty; an empty value disables that severity tier for automated posts. When both are empty, no warning posts are produced.
+- **FR-011b**: System MUST post a recurring schedule announcement to `announcement_channel_id` at most once every `schedule_announcement_interval_days` days, covering the next `schedule_announcement_lookahead_weeks` weeks of meeting days. The last-posted timestamp is persisted in the Configuration sheet as `last_schedule_announcement_at` so the trigger survives restarts. Either setting being empty disables the announcement.
 - **FR-012**: System MUST trigger warning checks immediately after any unvolunteer action
 - **FR-013**: ~~System MUST support manual warning checks via `/warnings`.~~ **Removed**: the `/warnings` slash command was intentionally removed (PR #19). Warning information is visible in the daily channel post and via `/schedule`.
 - **FR-014**: System MUST allow force synchronization with Google Sheets via command

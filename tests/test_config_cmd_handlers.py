@@ -563,3 +563,77 @@ async def test_get_no_key_shows_meeting_schedule_value(
     text = args[0]
     assert "Meeting schedule" in text
     assert "every wednesday" in text
+
+
+# ── /config get: announcements section + off rendering + leak guard ───────────
+
+@pytest.mark.asyncio
+async def test_get_no_key_does_not_leak_internal_last_at(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
+    from datetime import datetime, timezone
+
+    cache.config.last_schedule_announcement_at = datetime(
+        2026, 4, 1, 9, 0, tzinfo=timezone.utc
+    )
+    cmd = build_command(sheets, cache)
+    interaction = make_interaction(guild=False)
+    with patch("src.commands.config_cmd.is_owner", return_value=True):
+        await cmd.callback(interaction, action=None, key=None, value=None)
+    args, _ = interaction.response.send_message.call_args
+    text = args[0]
+    # Internal state must never leak into user-facing output
+    assert "last_schedule_announcement_at" not in text
+    assert "2026-04-01" not in text
+
+
+@pytest.mark.asyncio
+async def test_get_no_key_shows_announcements_section(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
+    cmd = build_command(sheets, cache)
+    interaction = make_interaction(guild=False)
+    with patch("src.commands.config_cmd.is_owner", return_value=True):
+        await cmd.callback(interaction, action=None, key=None, value=None)
+    args, _ = interaction.response.send_message.call_args
+    text = args[0]
+    assert "Announcements" in text
+    assert "Schedule post interval" in text
+    assert "Schedule post lookahead" in text
+
+
+@pytest.mark.asyncio
+async def test_get_no_key_nullable_none_renders_off(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
+    cache.config.warning_passive_days = None
+    cache.config.warning_urgent_days = None
+    cache.config.schedule_announcement_interval_days = None
+    cache.config.schedule_announcement_lookahead_weeks = None
+    cmd = build_command(sheets, cache)
+    interaction = make_interaction(guild=False)
+    with patch("src.commands.config_cmd.is_owner", return_value=True):
+        await cmd.callback(interaction, action=None, key=None, value=None)
+    args, _ = interaction.response.send_message.call_args
+    text = args[0]
+    assert "*off*" in text
+    # None should never render as "**None**"
+    assert "**None**" not in text
+
+
+@pytest.mark.asyncio
+async def test_set_nullable_integer_empty_clears(
+    sheets: MagicMock, cache: MagicMock
+) -> None:
+    cmd = build_command(sheets, cache)
+    interaction = make_interaction()
+    with patch("src.commands.config_cmd.is_owner", return_value=True):
+        await cmd.callback(
+            interaction,
+            action=action_choice("set"),
+            key=key_choice("schedule_announcement_interval_days"),
+            value="",
+        )
+    sheets.update_configuration.assert_called_once_with(
+        "schedule_announcement_interval_days", "", type_="integer"
+    )

@@ -24,6 +24,18 @@ focused on meeting days. Leave it blank to allow any date. Configurable via
 `/setup` Step 3 or `/config action:set key:meeting_schedule value:...` (empty
 value clears it).
 
+The bot posts two kinds of announcements to `announcement_channel_id`:
+
+- **Warnings**: `warning_passive_days` / `warning_urgent_days` fire at
+  `daily_check_time` once per day for unassigned upcoming dates.
+- **Schedule announcement**: every `schedule_announcement_interval_days` days
+  (state tracked in `last_schedule_announcement_at`) the bot posts a
+  `schedule_announcement_lookahead_weeks`-wide upcoming-schedule roster.
+
+For any of these four integer settings, an **empty value disables that
+announcement** — clear the cell in the Configuration sheet or run
+`/config action:set key:<name> value:` with no value.
+
 ## Commands
 
 Every command description is prefixed with 🤫 (reply private to you) or 📢

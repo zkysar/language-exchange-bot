@@ -37,9 +37,11 @@ class WarningService:
             if ev and ev.is_assigned:
                 continue
             days_until = (d - today).days
-            if days_until <= config.warning_urgent_days:
+            urgent_days = config.warning_urgent_days
+            passive_days = config.warning_passive_days
+            if urgent_days is not None and days_until <= urgent_days:
                 severity = "urgent"
-            elif days_until <= config.warning_passive_days:
+            elif passive_days is not None and days_until <= passive_days:
                 severity = "passive"
             else:
                 continue

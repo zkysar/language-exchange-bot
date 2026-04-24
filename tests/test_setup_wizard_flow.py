@@ -186,7 +186,7 @@ async def test_schedule_modal_valid_fields_writes_all(
     modal.timezone._value = "America/Los_Angeles"
     modal.passive_days._value = "5"
     modal.urgent_days._value = "2"
-    modal.window_weeks._value = "4"
+    modal.interval_days._value = "30"
     interaction = make_interaction()
     await modal.on_submit(interaction)
     assert sheets.update_configuration.call_count == 5
@@ -205,7 +205,7 @@ async def test_schedule_modal_invalid_field_sends_errors_no_write(
     modal.timezone._value = "America/Los_Angeles"
     modal.passive_days._value = "5"
     modal.urgent_days._value = "2"
-    modal.window_weeks._value = "4"
+    modal.interval_days._value = "30"
     interaction = make_interaction()
     await modal.on_submit(interaction)
     interaction.response.send_message.assert_awaited_once()
@@ -225,7 +225,7 @@ async def test_schedule_modal_multiple_errors_collected(
     modal.timezone._value = "Not/ATimezone"
     modal.passive_days._value = "99"  # out of range
     modal.urgent_days._value = "2"
-    modal.window_weeks._value = "4"
+    modal.interval_days._value = "30"
     interaction = make_interaction()
     await modal.on_submit(interaction)
     args, _ = interaction.response.send_message.call_args
