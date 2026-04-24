@@ -103,7 +103,7 @@ def build_command(
                 break
         return choices
 
-    @app_commands.command(name="hosting", description="👥 Sign up for or cancel hosting dates")
+    @app_commands.command(name="hosting", description="📢 Sign up for or cancel hosting dates")
     @app_commands.describe(
         action="What to do",
         date="A specific date",
@@ -251,7 +251,7 @@ async def _signup_date(
         existing = cache.get_event(d)
         if existing and existing.is_assigned:
             await interaction.followup.send(
-                f"👥 **{format_display(d)}** is already assigned to "
+                f"**{format_display(d)}** is already assigned to "
                 f"<@{existing.host_discord_id}>."
             )
             return
@@ -279,13 +279,13 @@ async def _signup_date(
         except Exception:
             log.exception("volunteer write failed")
             await interaction.followup.send(
-                "🔒 Failed to update schedule. Please try again later.",
+                "Failed to update schedule. Please try again later.",
                 ephemeral=True,
             )
             return
 
     await interaction.followup.send(
-        f"👥 <@{target.id}> is now hosting on **{format_display(d)}**."
+        f"<@{target.id}> is now hosting on **{format_display(d)}**."
     )
 
 
@@ -321,7 +321,7 @@ async def _signup_external(
             else:
                 who = f"{existing.host_username} (not on Discord)"
             await interaction.followup.send(
-                f"👥 **{format_display(d)}** is already assigned to {who}."
+                f"**{format_display(d)}** is already assigned to {who}."
             )
             return
         now = datetime.now(timezone.utc)
@@ -348,13 +348,13 @@ async def _signup_external(
         except Exception:
             log.exception("external volunteer write failed")
             await interaction.followup.send(
-                "🔒 Failed to update schedule. Please try again later.",
+                "Failed to update schedule. Please try again later.",
                 ephemeral=True,
             )
             return
 
     await interaction.followup.send(
-        f"👥 **{name}** (not on Discord) is now hosting on **{format_display(d)}**.\n"
+        f"**{name}** (not on Discord) is now hosting on **{format_display(d)}**.\n"
         f"> If this person is on Discord, use the `user` parameter instead."
     )
 
@@ -393,7 +393,7 @@ async def _signup_recurring(
     conflicts = [d for d in dates if d in existing and existing[d].is_assigned]
     available = [d for d in dates if d not in conflicts]
 
-    preview_lines = [f"👥 Pattern: `{pattern_str}` → {len(dates)} matches (next 3 months)"]
+    preview_lines = [f"Pattern: `{pattern_str}` → {len(dates)} matches (next 3 months)"]
     preview_lines.append(f"**Will assign ({len(available)}):**")
     for d in available[:15]:
         preview_lines.append(f"- {format_display(d)}")
@@ -499,13 +499,13 @@ class _ConfirmView(discord.ui.View):
             except Exception:
                 log.exception("recurring commit failed")
                 await interaction.followup.send(
-                    "🔒 Failed to create recurring assignment. Please try again later.",
+                    "Failed to create recurring assignment. Please try again later.",
                     ephemeral=True,
                 )
                 return
         self.stop()
         await interaction.followup.send(
-            f"👥 Created recurring pattern for <@{self.target.id}>: {assigned} dates assigned."
+            f"Created recurring pattern for <@{self.target.id}>: {assigned} dates assigned."
         )
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
@@ -514,7 +514,7 @@ class _ConfirmView(discord.ui.View):
             await interaction.response.send_message("Only the invoker can cancel.", ephemeral=True)
             return
         self.stop()
-        await interaction.response.send_message("🔒 Cancelled.", ephemeral=True)
+        await interaction.response.send_message("Cancelled.", ephemeral=True)
 
 
 async def _cancel_date_autocomplete(
@@ -570,11 +570,11 @@ async def _cancel_date(
         await cache.refresh(force=True)
         ev = cache.get_event(d)
         if not ev or not ev.is_assigned:
-            await interaction.followup.send(f"👥 No one is scheduled on **{format_display(d)}**.")
+            await interaction.followup.send(f"No one is scheduled on **{format_display(d)}**.")
             return
         if ev.host_discord_id and str(ev.host_discord_id) != str(target.id):
             await interaction.followup.send(
-                f"👥 <@{target.id}> is not assigned on **{format_display(d)}** "
+                f"<@{target.id}> is not assigned on **{format_display(d)}** "
                 f"(assigned: <@{ev.host_discord_id}>)."
             )
             return
@@ -594,7 +594,7 @@ async def _cancel_date(
         except Exception:
             log.exception("unvolunteer failed")
             await interaction.followup.send(
-                "🔒 Failed to cancel hosting. Please try again later.",
+                "Failed to cancel hosting. Please try again later.",
                 ephemeral=True,
             )
             return
@@ -603,7 +603,7 @@ async def _cancel_date(
         removed = f"<@{ev.host_discord_id}>"
     else:
         removed = f"**{ev.host_username}** (not on Discord)"
-    msg = f"👥 Removed {removed} from **{format_display(d)}**."
+    msg = f"Removed {removed} from **{format_display(d)}**."
     try:
         items = await warnings.check()
         urgent = [w for w in items if w.event_date == d and w.severity == "urgent"]
@@ -654,6 +654,6 @@ async def _cancel_recurring(
         await cache.refresh(force=True)
 
     await interaction.followup.send(
-        f"👥 Deactivated pattern \"{match.pattern_description}\" for <@{target.id}>, "
+        f"Deactivated pattern \"{match.pattern_description}\" for <@{target.id}>, "
         f"cleared {cleared} future date(s)."
     )

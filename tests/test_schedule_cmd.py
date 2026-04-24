@@ -279,20 +279,5 @@ async def test_schedule_public_flag_makes_reply_visible_to_channel(cache: MagicM
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 10)),
     ):
         await cmd.callback(interaction, weeks=1, date=None, user=None, public=True)
-    args, kwargs = interaction.response.send_message.call_args
+    _, kwargs = interaction.response.send_message.call_args
     assert kwargs.get("ephemeral") is False
-    assert "👥" in args[0]
-
-
-@pytest.mark.asyncio
-async def test_schedule_default_reply_has_private_glyph(cache: MagicMock) -> None:
-    cache.all_events = MagicMock(return_value=[])
-    cmd = build_command(cache)
-    interaction = make_interaction()
-    with (
-        patch("src.commands.schedule.is_host", return_value=False),
-        patch("src.commands.schedule.today_la", return_value=date(2025, 6, 10)),
-    ):
-        await cmd.callback(interaction, weeks=1, date=None, user=None)
-    args, _ = interaction.response.send_message.call_args
-    assert "🔒" in args[0]

@@ -49,7 +49,7 @@ The bot uses a three-tier role model driven by Discord role IDs in the Configura
 - **host**: member capabilities plus write actions (`/volunteer`/`/hosting`, `/unvolunteer`, proxy actions targeting other users). Write-action confirmations are public in-channel; read-only commands (including `/schedule` and `/help`) remain ephemeral for hosts unless `public:true` is passed.
 - **admin**: host capabilities plus technical operations (`/sync`, `/reset`, sheet operations). Admin commands are ephemeral. The first admin role ID is seeded in the Configuration sheet manually.
 
-Every command description and reply is prefixed with 🔒 (ephemeral) or 👥 (public) so visibility is discoverable both before and after invocation.
+Every command description is prefixed with 🤫 (ephemeral / only you see the reply) or 📢 (public / whole channel sees the reply) so visibility is discoverable before invocation. Reply bodies themselves are not decorated — Discord's native "Only you can see this message" indicator already identifies ephemeral replies after the fact.
 
 ---
 
@@ -245,7 +245,7 @@ Every command description and reply is prefixed with 🔒 (ephemeral) or 👥 (p
 - `date` (string, optional): Specific date to check (defaults to showing the configured schedule window)
 - `weeks` (integer, optional): Number of weeks to show. Default is **4**; maximum is **12**.
 - `user` (user, optional): Filter to a specific user's dates (members may only filter to themselves).
-- `public` (boolean, optional): If `true`, post the reply in-channel (👥). Defaults to `false` (🔒, ephemeral).
+- `public` (boolean, optional): If `true`, post the reply in-channel (📢). Defaults to `false` (🤫, ephemeral).
 
 **Authorization**:
 - Members / Hosts / Admins: Authorized. Reply is ephemeral by default for all tiers; `public:true` opts into a channel-visible reply.
