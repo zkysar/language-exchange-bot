@@ -19,29 +19,29 @@ def _host_display(ev) -> str:
 
 
 def build_command(cache: CacheService) -> app_commands.Command:
-    @app_commands.command(name="schedule", description="View upcoming host schedule")
+    @app_commands.command(name="schedule", description="🔒 View upcoming host schedule")
     @app_commands.describe(
         weeks="Number of weeks to show (1-12, default 4)",
         date="Optional specific date (YYYY-MM-DD)",
         user="Filter to a specific user's dates",
+        public="Also show this reply to the rest of the channel (default: private)",
     )
     async def schedule(
         interaction: discord.Interaction,
         weeks: Optional[int] = None,
         date: Optional[str] = None,
         user: Optional[discord.User] = None,
+        public: bool = False,
     ) -> None:
-        host_tier = is_host(interaction.user, cache.config)
-
-        if user and user != interaction.user and not host_tier:
+        if user and user != interaction.user and not is_host(interaction.user, cache.config):
             await interaction.response.send_message(
                 "Members may only view their own dates.", ephemeral=True
             )
             return
 
-        public = host_tier
         await cache.refresh()
         target_id = str(user.id) if user else None
+        glyph = "👥" if public else "🔒"
 
         if date:
             try:
@@ -51,9 +51,9 @@ def build_command(cache: CacheService) -> app_commands.Command:
                 return
             ev = cache.get_event(d)
             if ev and ev.is_assigned:
-                content = f"**{format_display(d)}** → {_host_display(ev)}"
+                content = f"{glyph} **{format_display(d)}** → {_host_display(ev)}"
             else:
-                content = f"**{format_display(d)}** → _unassigned_"
+                content = f"{glyph} **{format_display(d)}** → _unassigned_"
             await interaction.response.send_message(content, ephemeral=not public)
             return
 
@@ -72,16 +72,16 @@ def build_command(cache: CacheService) -> app_commands.Command:
             matches.sort(key=lambda e: e.date)
             if not matches:
                 await interaction.response.send_message(
-                    f"<@{target_id}> has no upcoming dates in the next {w} week(s).",
+                    f"{glyph} <@{target_id}> has no upcoming dates in the next {w} week(s).",
                     ephemeral=not public,
                 )
                 return
-            lines = [f"**Upcoming dates for <@{target_id}> — next {w} week(s)**"]
+            lines = [f"{glyph} **Upcoming dates for <@{target_id}> — next {w} week(s)**"]
             for ev in matches:
                 tag = " 🔁" if ev.recurring_pattern_id else ""
                 lines.append(f"• {format_display(ev.date)}{tag}")
         else:
-            lines = [f"**Schedule — next {w} week(s)**"]
+            lines = [f"{glyph} **Schedule — next {w} week(s)**"]
             events = {e.date: e for e in cache.all_events()}
             meeting_dates = generate_meeting_dates(cache.config, today, horizon)
             for i in range((horizon - today).days + 1):

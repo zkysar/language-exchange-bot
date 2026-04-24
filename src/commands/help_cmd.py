@@ -26,16 +26,20 @@ BOT_DESCRIPTION = (
     "or set up a recurring schedule."
 )
 
+VISIBILITY_LEGEND = "🔒 reply is only visible to you · 👥 reply is visible to the whole channel"
+
 COMMAND_HELP = {
     "schedule": "Use `/schedule` to view the next N weeks (default 4, max 12). "
                 "Pass `date:YYYY-MM-DD` to check a single date, or `user:@x` to filter "
-                "to a specific user's dates (hosts/admins can view others).",
+                "to a specific user's dates (hosts/admins can view others). "
+                "Replies are private by default — pass `public:true` to share with the channel.",
     "hosting": "Use `/hosting action:signup date:<date>` to claim an open date, "
                "`/hosting action:signup pattern:'every 2nd Tuesday'` to set up a recurring pattern, "
                "`/hosting action:cancel date:<date>` to cancel a date, or "
                "`/hosting action:cancel pattern:<pattern>` to cancel a recurring pattern. "
-               "When `meeting_schedule` is set in config, signups are restricted to "
-               "the days the exchange actually meets.",
+               "Confirmations are posted in the channel (👥) so everyone can see the "
+               "updated schedule. When `meeting_schedule` is set in config, signups "
+               "are restricted to the days the exchange actually meets.",
     "config": "Owner-only. Use `/config` to view all settings, `/config action:set key:<key> value:<v>` "
               "to change a setting, or `/config action:add|remove key:admin|host|member value:<role>` "
               "to manage role buckets. Set `meeting_schedule` (e.g. `every wednesday`) to restrict "
@@ -129,7 +133,11 @@ def _visible_autocomplete(user: discord.abc.User, config) -> list[str]:
 def _build_embed(user: discord.abc.User, config) -> discord.Embed:
     embed = discord.Embed(
         title="Host Scheduler",
-        description=f"{BOT_DESCRIPTION}\n\n[Sheet]({sheet_url()}) • [GitHub]({GITHUB_URL})",
+        description=(
+            f"{BOT_DESCRIPTION}\n\n"
+            f"{VISIBILITY_LEGEND}\n\n"
+            f"[Sheet]({sheet_url()}) • [GitHub]({GITHUB_URL})"
+        ),
         color=0x5865F2,
     )
 
@@ -167,7 +175,7 @@ def _build_embed(user: discord.abc.User, config) -> discord.Embed:
 
 
 def build_command(cache: CacheService) -> app_commands.Command:
-    @app_commands.command(name="help", description="Show command help")
+    @app_commands.command(name="help", description="🔒 Show command help")
     @app_commands.describe(command="Pick a command for details")
     async def help_cmd(
         interaction: discord.Interaction,

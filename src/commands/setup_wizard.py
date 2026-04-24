@@ -331,7 +331,7 @@ class _MeetingScheduleButton(ui.Button):
 
 
 def build_command(sheets: SheetsService, cache: CacheService) -> app_commands.Command:
-    @app_commands.command(name="setup", description="Guided setup wizard for bot configuration")
+    @app_commands.command(name="setup", description="🔒 Guided setup wizard for bot configuration")
     async def setup_cmd(interaction: discord.Interaction) -> None:
         if not is_owner(interaction.user, cache.config):
             await interaction.response.send_message("This command is owner-only.", ephemeral=True)

@@ -194,11 +194,11 @@ When the database becomes corrupted or inconsistent, an administrator needs to r
 - **FR-024**: System MUST prevent user interactions during database reset operation and display maintenance message
 - **FR-025**: System MUST verify data integrity after reset and confirm successful recovery
 - **FR-026**: System MUST enforce three-tier role-based authorization by reading Discord role IDs from the Configuration sheet and checking the invoking user's Discord roles at command time:
-  - `member_role_ids`: read-only commands (`/schedule`, `/listdates [self]`, `/help`); responses MUST be ephemeral (visible only to the invoking user)
-  - `host_role_ids`: all member capabilities plus write actions (`/volunteer`, `/unvolunteer`, proxy actions for other users); host responses are visible in-channel. Note: `/warnings` is read-only and available to all tiers (including members); its response is always ephemeral.
+  - `member_role_ids`: read-only commands (`/schedule`, `/listdates [self]`, `/help`); responses MUST be ephemeral (visible only to the invoking user) by default. `/schedule` accepts an optional `public:true` flag that renders the reply in-channel instead.
+  - `host_role_ids`: all member capabilities plus write actions (`/volunteer`, `/unvolunteer`, proxy actions for other users); write-action responses are visible in-channel. Read-only commands (including `/schedule`) are ephemeral for hosts too unless `public:true` is passed.
   - `admin_role_ids`: all host capabilities plus technical operations (`/sync`, `/reset`, direct sheet operations)
 - **FR-027**: Role→tier mapping MUST be maintained by editing the Configuration sheet directly; the bot does NOT provide commands to add/remove members, hosts, or admins. Role membership itself is managed in Discord via standard role assignment.
-- **FR-028**: System MUST render all member-invoked responses as ephemeral Discord messages so that members only see output addressed to themselves; host and admin responses MAY be public
+- **FR-028**: System MUST render command replies as ephemeral by default across all tiers. Write-action commands (`/volunteer`, `/unvolunteer`) post public confirmations in-channel. `/schedule` accepts an optional `public:true` flag that opts into a public reply; without the flag the reply is always ephemeral regardless of the invoker's role. Every command description and reply is prefixed with 🔒 (ephemeral) or 👥 (public) so visibility is discoverable before and after invocation.
 - **FR-029**: System MUST support an optional `meeting_schedule` configuration setting (a recurrence pattern such as `every wednesday` or `every 2nd tuesday`) that describes the days the exchange meets. When set:
   - Single-date signups for non-meeting days MUST be rejected with a message identifying the configured schedule
   - Recurring signup patterns MUST align with the meeting schedule (every date the host's pattern generates in the next 3 months must also be a meeting day); misaligned patterns MUST be rejected before the preview
@@ -250,7 +250,7 @@ When the database becomes corrupted or inconsistent, an administrator needs to r
 
 **Member Commands** (read-only; responses are ephemeral — visible only to the invoking user):
 
-- `/schedule` - View upcoming host schedule (default 4 weeks; `weeks` parameter up to 12)
+- `/schedule` - View upcoming host schedule (default 4 weeks; `weeks` parameter up to 12). Ephemeral by default; pass `public:true` to post the reply in-channel
 - `/schedule date:[date]` - Check who's hosting on a specific date
 - `/schedule weeks:[N]` - Show N weeks of schedule (default 4, max 12)
 - `/listdates` - View the invoking member's own upcoming hosting dates (self only)

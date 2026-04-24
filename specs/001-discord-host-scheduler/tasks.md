@@ -534,7 +534,7 @@ This provides:
 - [ ] T205 [REWORK] Rewrite src/utils/auth.py to expose `is_member(user)`, `is_host(user)`, `is_admin(user)` backed by the new Configuration keys; `is_host` must return True for admins as well; `is_member` must return True for hosts and admins (tiers are inclusive upward)
 - [ ] T206 [REWORK] Update every command's authorization check to call the new tier functions: `/schedule`, `/listdates`, `/help` require `is_member`; `/volunteer`, `/unvolunteer`, `/warnings` require `is_host`; `/sync`, `/reset` require `is_admin`
 - [ ] T207 [REWORK] Constrain `/listdates` so members can only query their own dates (reject `user` parameter when invoker is member-only)
-- [ ] T208 [REWORK] Make all member-invoked command responses ephemeral (set `ephemeral=True` on the Discord interaction response) for `/schedule`, `/listdates`, `/help`; host/admin invocations remain public
+- [ ] T208 [REWORK] Make all command responses ephemeral by default across every tier for `/schedule` and `/help`. Add a `public:true` flag to `/schedule` to opt into a channel-visible reply; write-action commands (`/hosting` signup/cancel) post public confirmations. Description and reply text are prefixed with 🔒 or 👥 to make visibility discoverable.
 - [ ] T209 [REWORK] Update WarningService urgent-warning ping to mention both host and admin roles (from `host_role_ids` + `admin_role_ids`) rather than a single organizer role
 - [ ] T210 [REWORK] Update all user-facing authorization error messages to name the required tier ("This command requires the host role" / "…requires the admin role")
 - [ ] T211 [REWORK] Update contract tests in tests/contract/ to assert the new tier model and ephemeral response behavior

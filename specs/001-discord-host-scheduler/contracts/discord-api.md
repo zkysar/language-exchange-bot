@@ -45,9 +45,11 @@ All commands return Discord interaction responses within 3 seconds (acknowledgme
 
 The bot uses a three-tier role model driven by Discord role IDs in the Configuration sheet (`member_role_ids`, `host_role_ids`, `admin_role_ids`). Tier membership is determined by checking the invoking user's Discord roles against these lists at command time. Role assignment is managed in Discord itself — the bot does not provide commands to add or remove members/hosts/admins.
 
-- **member**: read-only access (`/schedule`, `/listdates` for self, `/help`). Responses MUST be ephemeral (visible only to the invoking user).
-- **host**: member capabilities plus write actions (`/volunteer`, `/unvolunteer`, proxy actions targeting other users, `/warnings`). Responses are public in-channel.
-- **admin**: host capabilities plus technical operations (`/sync`, `/reset`, sheet operations). The first admin role ID is seeded in the Configuration sheet manually.
+- **member**: read-only access (`/schedule`, `/listdates` for self, `/help`). Responses are ephemeral by default. `/schedule` accepts an optional `public:true` flag to opt into a channel-visible reply.
+- **host**: member capabilities plus write actions (`/volunteer`/`/hosting`, `/unvolunteer`, proxy actions targeting other users). Write-action confirmations are public in-channel; read-only commands (including `/schedule` and `/help`) remain ephemeral for hosts unless `public:true` is passed.
+- **admin**: host capabilities plus technical operations (`/sync`, `/reset`, sheet operations). Admin commands are ephemeral. The first admin role ID is seeded in the Configuration sheet manually.
+
+Every command description and reply is prefixed with 🔒 (ephemeral) or 👥 (public) so visibility is discoverable both before and after invocation.
 
 ---
 
@@ -209,7 +211,7 @@ The bot uses a three-tier role model driven by Discord role IDs in the Configura
 
 **Authorization**:
 - Members: Can only run `/listdates` for themselves (no `user` parameter or `user` = self); responses are ephemeral
-- Hosts / Admins: Can view any user's dates; responses are public
+- Hosts / Admins: Can view any user's dates; responses are ephemeral by default
 
 **Success Response**:
 - Lists all assigned dates for user (next 12 weeks)
@@ -242,10 +244,11 @@ The bot uses a three-tier role model driven by Discord role IDs in the Configura
 **Parameters**:
 - `date` (string, optional): Specific date to check (defaults to showing the configured schedule window)
 - `weeks` (integer, optional): Number of weeks to show. Default is **4**; maximum is **12**.
+- `user` (user, optional): Filter to a specific user's dates (members may only filter to themselves).
+- `public` (boolean, optional): If `true`, post the reply in-channel (👥). Defaults to `false` (🔒, ephemeral).
 
 **Authorization**:
-- Members: Authorized; responses are ephemeral
-- Hosts / Admins: Authorized; responses are public
+- Members / Hosts / Admins: Authorized. Reply is ephemeral by default for all tiers; `public:true` opts into a channel-visible reply.
 
 **Success Response**:
 - Shows schedule table with dates and assigned hosts
@@ -281,7 +284,7 @@ The bot uses a three-tier role model driven by Discord role IDs in the Configura
 **Parameters**:
 - `command` (string, optional): Specific command name (shows detailed help)
 
-**Authorization**: All tiers (member/host/admin) can view help; member responses are ephemeral
+**Authorization**: All tiers (member/host/admin) can view help; responses are ephemeral for everyone
 
 **Success Response**:
 - Lists all commands with brief descriptions (if no command specified)
