@@ -26,7 +26,7 @@ BOT_DESCRIPTION = (
     "or set up a recurring schedule."
 )
 
-VISIBILITY_LEGEND = "🔒 reply is only visible to you · 👥 reply is visible to the whole channel"
+VISIBILITY_LEGEND = "🤫 only you see the reply · 📢 the whole channel sees the reply"
 
 COMMAND_HELP = {
     "schedule": "Use `/schedule` to view the next N weeks (default 4, max 12). "
@@ -37,7 +37,7 @@ COMMAND_HELP = {
                "`/hosting action:signup pattern:'every 2nd Tuesday'` to set up a recurring pattern, "
                "`/hosting action:cancel date:<date>` to cancel a date, or "
                "`/hosting action:cancel pattern:<pattern>` to cancel a recurring pattern. "
-               "Confirmations are posted in the channel (👥) so everyone can see the "
+               "Confirmations are posted in the channel (📢) so everyone can see the "
                "updated schedule. When `meeting_schedule` is set in config, signups "
                "are restricted to the days the exchange actually meets.",
     "config": "Owner-only. Use `/config` to view all settings, `/config action:set key:<key> value:<v>` "
@@ -175,7 +175,7 @@ def _build_embed(user: discord.abc.User, config) -> discord.Embed:
 
 
 def build_command(cache: CacheService) -> app_commands.Command:
-    @app_commands.command(name="help", description="🔒 Show command help")
+    @app_commands.command(name="help", description="🤫 Show command help")
     @app_commands.describe(command="Pick a command for details")
     async def help_cmd(
         interaction: discord.Interaction,

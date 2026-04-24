@@ -116,7 +116,7 @@ class SchedulerBot(discord.Client):
                 channel = self.get_channel(int(channel_id))
                 if not channel:
                     return
-                lines = ["👥 **Daily warning check**"]
+                lines = ["**Daily warning check**"]
                 host_mentions = " ".join(f"<@&{rid}>" for rid in config.host_role_ids)
                 admin_mentions = " ".join(f"<@&{rid}>" for rid in config.admin_role_ids)
                 urgent_pings = " ".join(filter(None, [host_mentions, admin_mentions]))

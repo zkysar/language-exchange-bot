@@ -12,7 +12,7 @@ log = get_logger(__name__)
 
 
 def build_command(sheets: SheetsService, cache: CacheService) -> app_commands.Command:
-    @app_commands.command(name="sync", description="🔒 Force sync with Google Sheets")
+    @app_commands.command(name="sync", description="🤫 Force sync with Google Sheets")
     async def sync(interaction: discord.Interaction) -> None:
         if not is_admin(interaction.user, cache.config):
             await interaction.response.send_message(
@@ -30,7 +30,7 @@ def build_command(sheets: SheetsService, cache: CacheService) -> app_commands.Co
             )
             return
         await interaction.followup.send(
-            f"🔒 Synced: {len(cache.all_events())} event(s) loaded.", ephemeral=True
+            f"Synced: {len(cache.all_events())} event(s) loaded.", ephemeral=True
         )
 
     return sync

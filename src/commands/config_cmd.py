@@ -71,7 +71,7 @@ KEY_CHOICES = [
 
 
 def build_command(sheets: SheetsService, cache: CacheService) -> app_commands.Command:
-    @app_commands.command(name="config", description="🔒 View and change bot configuration")
+    @app_commands.command(name="config", description="🤫 View and change bot configuration")
     @app_commands.describe(
         key="Which setting or role bucket",
         action="What to do (default: get)",
@@ -164,7 +164,7 @@ async def _handle_get(
             f"**{cfg.meeting_schedule}**" if cfg.meeting_schedule else "*not set*"
         )
         lines = [
-            "🔒 **Configuration**",
+            "**Configuration**",
             "",
             "**Warnings**",
             f"  Passive warning days: **{cfg.warning_passive_days}**",
@@ -190,7 +190,7 @@ async def _handle_get(
         ids = list(getattr(cfg, ROLE_BUCKETS[key_val]))
         label = _ROLE_LABELS[key_val]
         await interaction.response.send_message(
-            f"🔒 **{label}:** {_role_mentions(ids)}", ephemeral=True
+            f"**{label}:** {_role_mentions(ids)}", ephemeral=True
         )
         return
 
@@ -203,7 +203,7 @@ async def _handle_get(
             display = "*not set*"
         else:
             display = f"**{raw}**"
-        await interaction.response.send_message(f"🔒 {meta.label}: {display}", ephemeral=True)
+        await interaction.response.send_message(f"{meta.label}: {display}", ephemeral=True)
         return
 
     await interaction.response.send_message(f"Unknown key: `{key_val}`", ephemeral=True)
@@ -244,7 +244,7 @@ async def _handle_set(
         await cache.refresh(force=True)
         old_mention = f"<#{old}>" if old else "*not set*"
         await interaction.followup.send(
-            f"🔒 {meta.label}: {old_mention} -> <#{channel_id}>", ephemeral=True
+            f"{meta.label}: {old_mention} -> <#{channel_id}>", ephemeral=True
         )
         return
 
@@ -257,7 +257,7 @@ async def _handle_set(
     sheets.update_configuration(meta.config_key, val, type_=meta.sheets_type)
     await cache.refresh(force=True)
     await interaction.followup.send(
-        f"🔒 {meta.label}: **{old}** -> **{val}**", ephemeral=True
+        f"{meta.label}: **{old}** -> **{val}**", ephemeral=True
     )
 
 
@@ -300,7 +300,7 @@ async def _handle_role_mutation(
         sheets.update_configuration(bucket_key, json.dumps(unique), type_="json")
         await cache.refresh(force=True)
         await interaction.followup.send(
-            f"🔒 Added `{role_id}` to `{key_val}`.", ephemeral=True
+            f"Added `{role_id}` to `{key_val}`.", ephemeral=True
         )
 
     elif act == "remove":
@@ -314,7 +314,7 @@ async def _handle_role_mutation(
         sheets.update_configuration(bucket_key, json.dumps(unique), type_="json")
         await cache.refresh(force=True)
         await interaction.followup.send(
-            f"🔒 Removed `{role_id}` from `{key_val}`.", ephemeral=True
+            f"Removed `{role_id}` from `{key_val}`.", ephemeral=True
         )
 
 
