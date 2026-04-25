@@ -2,6 +2,8 @@
 
 A Discord bot that manages host volunteering for recurring meetups, backed by Google Sheets.
 
+[Demo video](https://youtu.be/ooiyUec-FZk) — quick walkthrough of how to use the bot.
+
 ## Setup
 
 1. Install deps: `pip install -r requirements.txt`
