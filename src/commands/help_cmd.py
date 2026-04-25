@@ -19,6 +19,7 @@ def _read_version() -> str:
 
 
 GITHUB_URL = "https://github.com/zkysar/language-exchange-bot"
+DEMO_VIDEO_URL = "https://youtu.be/ooiyUec-FZk"
 
 BOT_DESCRIPTION = (
     "I help coordinate language-exchange hosting. "
@@ -136,7 +137,7 @@ def _build_embed(user: discord.abc.User, config) -> discord.Embed:
         description=(
             f"{BOT_DESCRIPTION}\n\n"
             f"{VISIBILITY_LEGEND}\n\n"
-            f"[Sheet]({sheet_url()}) • [GitHub]({GITHUB_URL})"
+            f"[Demo video]({DEMO_VIDEO_URL}) • [Sheet]({sheet_url()}) • [GitHub]({GITHUB_URL})"
         ),
         color=0x5865F2,
     )
@@ -184,7 +185,7 @@ def build_command(cache: CacheService) -> app_commands.Command:
         if command:
             text = COMMAND_HELP.get(command)
             if text:
-                text = f"{text}\n\n[Sheet]({sheet_url()}) • [GitHub]({GITHUB_URL})"
+                text = f"{text}\n\n[Demo video]({DEMO_VIDEO_URL}) • [Sheet]({sheet_url()}) • [GitHub]({GITHUB_URL})"
                 await interaction.response.send_message(text, ephemeral=True)
                 return
 
