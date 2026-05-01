@@ -3,6 +3,9 @@ primary_region = "sjc"
 
 [build]
 
+[env]
+  BOT_ENV = "prod"
+
 [processes]
   app = "python -m src.bot"
 
