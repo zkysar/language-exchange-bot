@@ -125,12 +125,14 @@ class SchedulerBot(discord.Client):
         await self._sync_avatar()
 
     async def _sync_avatar(self) -> None:
+        import os
         from hashlib import sha256
         from pathlib import Path
 
         import cairosvg
 
-        icon_path = Path(__file__).resolve().parents[2] / "assets" / "bot-icon.svg"
+        icon_filename = "bot-icon-prod.svg" if os.environ.get("BOT_ENV") == "prod" else "bot-icon.svg"
+        icon_path = Path(__file__).resolve().parents[2] / "assets" / icon_filename
         if not icon_path.exists():
             log.warning("bot icon not found at %s", icon_path)
             return
