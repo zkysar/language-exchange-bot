@@ -30,7 +30,7 @@ BOT_DESCRIPTION = (
 VISIBILITY_LEGEND = "🤫 only you see the reply · 📢 the whole channel sees the reply"
 
 COMMAND_HELP = {
-    "schedule": "Use `/schedule` to view the next N weeks (default 4, max 12). "
+    "schedule": "Use `/schedule` to view the next N weeks (1-12, default is the configured window). "
                 "Pass `date:YYYY-MM-DD` to check a single date, or `user:@x` to filter "
                 "to a specific user's dates (hosts/admins can view others). "
                 "Replies are private by default — pass `public:true` to share with the channel.",
@@ -41,8 +41,8 @@ COMMAND_HELP = {
                "Confirmations are posted in the channel (📢) so everyone can see the "
                "updated schedule. When `meeting_schedule` is set in config, signups "
                "are restricted to the days the exchange actually meets.",
-    "config": "Owner-only. Use `/config` to view all settings, `/config action:set key:<key> value:<v>` "
-              "to change a setting, or `/config action:add|remove key:admin|host|member value:<role>` "
+    "config": "Owner-only. Use `/config` to view all settings, `/config key:<key> action:set value:<v>` "
+              "to change a setting, or `/config key:admin|host action:add|remove value:<role>` "
               "to manage role buckets. Set `meeting_schedule` (e.g. `every wednesday`) to restrict "
               "signups, schedule view, and warnings to meeting days; leave value empty to clear.",
     "setup": "Owner-only. Guided wizard that walks through all essential bot configuration.",
@@ -103,9 +103,9 @@ _OWNER_INTRO = (
 _OWNER_CATEGORY = (
     "Owners — Configuration",
     [
-        ("/config show", "View all settings"),
-        ("/config set", "Change a setting"),
-        ("/config roles", "Manage role buckets"),
+        ("/config", "View all settings"),
+        ("/config key:<key> action:set value:<v>", "Change a setting"),
+        ("/config key:admin|host action:add|remove value:@role", "Manage role buckets"),
         ("/setup", "Guided setup wizard"),
     ],
 )

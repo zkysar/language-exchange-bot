@@ -130,6 +130,28 @@ def build_command(sheets: SheetsService, cache: CacheService) -> app_commands.Co
                 s for s in _MEETING_SCHEDULE_SUGGESTIONS if lower in s.lower()
             ]
             return [app_commands.Choice(name=s, value=s) for s in matches[:25]]
+        guild = interaction.guild
+        if guild is None:
+            return []
+        meta = SETTINGS.get(key)
+        if meta is not None and meta.setting_type == "channel":
+            channels = sorted(guild.text_channels, key=lambda c: c.position)
+            return [
+                app_commands.Choice(name=f"#{c.name}"[:100], value=str(c.id))
+                for c in channels
+                if lower in c.name.lower()
+            ][:25]
+        if key in ROLE_BUCKETS:
+            roles = sorted(
+                (r for r in guild.roles if r != guild.default_role),
+                key=lambda r: r.position,
+                reverse=True,
+            )
+            return [
+                app_commands.Choice(name=f"@{r.name}"[:100], value=str(r.id))
+                for r in roles
+                if lower in r.name.lower()
+            ][:25]
         return []
 
     return config

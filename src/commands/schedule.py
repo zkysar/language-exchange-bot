@@ -21,7 +21,7 @@ def _host_display(ev) -> str:
 def build_command(cache: CacheService) -> app_commands.Command:
     @app_commands.command(name="schedule", description="🤫 View upcoming host schedule")
     @app_commands.describe(
-        weeks="Number of weeks to show (1-12, default 4)",
+        weeks="Number of weeks to show (1-12, default: configured window)",
         date="Optional specific date (YYYY-MM-DD)",
         user="Filter to a specific user's dates",
         public="Also show this reply to the rest of the channel (default: private)",
