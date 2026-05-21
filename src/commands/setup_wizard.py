@@ -97,7 +97,7 @@ class SetupWizardView(ui.View):
             inline=True,
         )
         embed.add_field(
-            name="Advanced (use /config set)",
+            name="Advanced (use /config)",
             value=(
                 f"Lookahead weeks: {_nullable_int_display(cfg.schedule_announcement_lookahead_weeks)}\n"
                 f"Schedule window: {cfg.schedule_window_weeks} weeks"
@@ -143,7 +143,7 @@ class SetupWizardView(ui.View):
             name="Schedule window",
             value=(
                 f"{cfg.schedule_window_weeks} weeks "
-                "(set via `/config set schedule_window_weeks <n>`)"
+                "(set via `/config key:schedule_window_weeks action:set value:<n>`)"
             ),
             inline=False,
         )
@@ -205,7 +205,7 @@ class _DoneButton(ui.Button):
         self.wizard.stop()
         embed = discord.Embed(
             title="Setup complete!",
-            description="Use `/config show` to review settings or `/config <group>` to change individual values.",
+            description="Use `/config` to review settings or `/config key:<key> action:set value:<v>` to change individual values.",
             color=discord.Color.green(),
         )
         await interaction.response.edit_message(embed=embed, view=self.wizard)
