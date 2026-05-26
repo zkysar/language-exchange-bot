@@ -250,9 +250,12 @@ async def _signup_date(
         await cache.refresh(force=True)
         existing = cache.get_event(d)
         if existing and existing.is_assigned:
+            if existing.host_discord_id:
+                who = f"<@{existing.host_discord_id}>"
+            else:
+                who = f"{existing.host_username} (not on Discord)"
             await interaction.followup.send(
-                f"**{format_display(d)}** is already assigned to "
-                f"<@{existing.host_discord_id}>."
+                f"**{format_display(d)}** is already assigned to {who}."
             )
             return
         now = datetime.now(timezone.utc)

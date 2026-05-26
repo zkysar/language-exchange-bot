@@ -162,6 +162,26 @@ async def test_signup_date_already_assigned_sends_error(
 
 
 @pytest.mark.asyncio
+async def test_signup_date_already_assigned_offdiscord_names_host(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    ev = EventDate(date=date(2025, 6, 10), host_discord_id="", host_username="Jane")
+    cache.get_event.return_value = ev
+    cmd = build_command(sheets, cache, warnings_svc)
+    interaction = make_interaction(user_id=1)
+    with (
+        patch("src.commands.hosting.is_host", return_value=True),
+        patch("src.commands.hosting.today_la", return_value=date(2025, 6, 1)),
+    ):
+        await cmd.callback(interaction, action=_SIGNUP, date="2025-06-10")
+    interaction.followup.send.assert_awaited_once()
+    args, _ = interaction.followup.send.call_args
+    assert "Jane" in args[0]
+    assert "not on Discord" in args[0]
+    assert "<@None>" not in args[0] and "<@>" not in args[0]
+
+
+@pytest.mark.asyncio
 async def test_signup_date_happy_path(
     sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
 ) -> None:
