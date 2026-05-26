@@ -181,7 +181,7 @@ def build_command(
         elif act == "signup" and pattern:
             await _signup_recurring(interaction, sheets, cache, target, pattern)
         elif act == "cancel" and date:
-            await _cancel_date(interaction, sheets, cache, warnings, target, date)
+            await _cancel_date(interaction, sheets, cache, warnings, user, date)
         elif act == "cancel" and pattern:
             await _cancel_recurring(interaction, sheets, cache, target, pattern)
 
@@ -527,20 +527,23 @@ async def _cancel_date_autocomplete(
         if opt.get("name") == "user":
             target_id = opt.get("value")
     explicit_user = bool(target_id)
-    if not target_id:
-        target_id = str(interaction.user.id)
     choices: List[app_commands.Choice[str]] = []
     for ev in sorted(cache.all_events(), key=lambda e: e.date):
         if not ev.is_assigned or ev.date < today:
             continue
-        if ev.host_discord_id:
-            if str(ev.host_discord_id) != str(target_id):
+        if explicit_user:
+            # Narrow to the chosen user's Discord-assigned dates.
+            if not ev.host_discord_id or str(ev.host_discord_id) != str(target_id):
                 continue
             label = format_display(ev.date)
+        elif ev.host_discord_id:
+            # No user chosen — show every assigned date, labeled with its host.
+            label = (
+                f"{format_display(ev.date)} — {ev.host_username}"
+                if ev.host_username
+                else format_display(ev.date)
+            )
         else:
-            # External host date — only show when no user was specified
-            if explicit_user:
-                continue
             label = f"{format_display(ev.date)} — {ev.host_username} (not on Discord)"
         if current and current.lower() not in label.lower() and current not in format_date(ev.date):
             continue
@@ -555,7 +558,7 @@ async def _cancel_date(
     sheets: SheetsService,
     cache: CacheService,
     warnings: WarningService,
-    target: discord.abc.User,
+    user: Optional[discord.abc.User],
     date_str: str,
 ) -> None:
     try:
@@ -572,12 +575,21 @@ async def _cancel_date(
         if not ev or not ev.is_assigned:
             await interaction.followup.send(f"No one is scheduled on **{format_display(d)}**.")
             return
-        if ev.host_discord_id and str(ev.host_discord_id) != str(target.id):
+        if user is not None and (
+            not ev.host_discord_id or str(ev.host_discord_id) != str(user.id)
+        ):
+            assigned = (
+                f"<@{ev.host_discord_id}>"
+                if ev.host_discord_id
+                else f"{ev.host_username} (not on Discord)"
+            )
             await interaction.followup.send(
-                f"<@{target.id}> is not assigned on **{format_display(d)}** "
-                f"(assigned: <@{ev.host_discord_id}>)."
+                f"<@{user.id}> is not assigned on **{format_display(d)}** "
+                f"(assigned: {assigned})."
             )
             return
+        removed_host_id = ev.host_discord_id
+        removed_name = ev.host_username
         try:
             await loop.run_in_executor(None, sheets.clear_schedule_assignment, d)
             await loop.run_in_executor(
@@ -586,7 +598,7 @@ async def _cancel_date(
                 make_audit(
                     "UNVOLUNTEER",
                     str(interaction.user.id),
-                    target_user_discord_id=str(target.id),
+                    target_user_discord_id=str(removed_host_id) if removed_host_id else None,
                     event_date=d,
                 ),
             )
@@ -599,10 +611,10 @@ async def _cancel_date(
             )
             return
 
-    if ev.host_discord_id:
-        removed = f"<@{ev.host_discord_id}>"
+    if removed_host_id:
+        removed = f"<@{removed_host_id}>"
     else:
-        removed = f"**{ev.host_username}** (not on Discord)"
+        removed = f"**{removed_name}** (not on Discord)"
     msg = f"Removed {removed} from **{format_display(d)}**."
     try:
         items = await warnings.check()

@@ -324,15 +324,40 @@ async def test_cancel_date_not_assigned_sends_error(
 async def test_cancel_date_wrong_user_sends_error(
     sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
 ) -> None:
+    # When a user is explicitly named but the date belongs to someone else,
+    # warn instead of clearing.
     ev = EventDate(date=date(2025, 6, 10), host_discord_id="99")
+    cache.get_event.return_value = ev
+    cmd = build_command(sheets, cache, warnings_svc)
+    interaction = make_interaction(user_id=1)
+    named = MagicMock(spec=discord.User)
+    named.id = 1
+    named.display_name = "Me"
+    with patch("src.commands.hosting.is_host", return_value=True):
+        await cmd.callback(interaction, action=_CANCEL, date="2025-06-10", user=named)
+    interaction.followup.send.assert_awaited_once()
+    args, _ = interaction.followup.send.call_args
+    assert "<@1>" in args[0] or "not assigned" in args[0].lower()
+
+
+@pytest.mark.asyncio
+async def test_cancel_date_clears_other_host_by_date_alone(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    # No user specified: the date alone identifies the assignment, so a host
+    # can open up someone else's date directly.
+    ev = EventDate(date=date(2025, 6, 10), host_discord_id="99", host_username="Jason")
     cache.get_event.return_value = ev
     cmd = build_command(sheets, cache, warnings_svc)
     interaction = make_interaction(user_id=1)
     with patch("src.commands.hosting.is_host", return_value=True):
         await cmd.callback(interaction, action=_CANCEL, date="2025-06-10")
+    sheets.clear_schedule_assignment.assert_called_once()
+    cache.remove_event_assignment.assert_called_once()
     interaction.followup.send.assert_awaited_once()
     args, _ = interaction.followup.send.call_args
-    assert "<@1>" in args[0] or "not assigned" in args[0].lower()
+    assert "Removed" in args[0]
+    assert "<@99>" in args[0]
 
 
 @pytest.mark.asyncio
@@ -434,13 +459,15 @@ async def test_date_autocomplete_signup_returns_open_dates(
 
 
 @pytest.mark.asyncio
-async def test_date_autocomplete_cancel_returns_assigned_dates(
+async def test_date_autocomplete_cancel_shows_all_assigned_dates_when_no_user(
     sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
 ) -> None:
+    # With no user specified, cancel surfaces every future assigned date,
+    # regardless of whose it is, each labeled with its host.
     events = [
-        EventDate(date=date(2025, 6, 10), host_discord_id="1"),
+        EventDate(date=date(2025, 6, 10), host_discord_id="1", host_username="Me"),
         EventDate(date=date(2025, 5, 1), host_discord_id="1"),  # past — skipped
-        EventDate(date=date(2025, 6, 11), host_discord_id="99"),  # different user
+        EventDate(date=date(2025, 6, 11), host_discord_id="99", host_username="Jason"),
     ]
     cache.all_events.return_value = events
     cmd = build_command(sheets, cache, warnings_svc)
@@ -450,9 +477,11 @@ async def test_date_autocomplete_cancel_returns_assigned_dates(
     with patch("src.commands.hosting.today_la", return_value=date(2025, 6, 1)):
         results = await autocomplete(interaction, "")
     values = [c.value for c in results]
+    names = [c.name for c in results]
     assert "2025-06-10" in values
-    assert "2025-05-01" not in values
-    assert "2025-06-11" not in values
+    assert "2025-05-01" not in values  # past
+    assert "2025-06-11" in values  # someone else's date now shows
+    assert any("Jason" in n for n in names)  # labeled with its host
 
 
 @pytest.mark.asyncio
@@ -475,6 +504,32 @@ async def test_date_autocomplete_cancel_includes_external_hosts(
     assert "2025-06-10" in values
     assert "2025-06-11" in values
     assert any("Jane" in n and "not on Discord" in n for n in names)
+
+
+@pytest.mark.asyncio
+async def test_date_autocomplete_cancel_filters_to_user_when_specified(
+    sheets: MagicMock, cache: MagicMock, warnings_svc: MagicMock
+) -> None:
+    # With a user specified, only that user's dates show — others are filtered out.
+    events = [
+        EventDate(date=date(2025, 6, 10), host_discord_id="1", host_username="Me"),
+        EventDate(date=date(2025, 6, 11), host_discord_id="99", host_username="Jason"),
+    ]
+    cache.all_events.return_value = events
+    cmd = build_command(sheets, cache, warnings_svc)
+    autocomplete = cmd._params["date"].autocomplete
+    interaction = make_interaction(user_id=1)
+    interaction.data = {
+        "options": [
+            {"name": "action", "value": "cancel"},
+            {"name": "user", "value": "99"},
+        ]
+    }
+    with patch("src.commands.hosting.today_la", return_value=date(2025, 6, 1)):
+        results = await autocomplete(interaction, "")
+    values = [c.value for c in results]
+    assert "2025-06-11" in values  # Jason's date (the specified user)
+    assert "2025-06-10" not in values  # someone else's date filtered out
 
 
 @pytest.mark.asyncio
