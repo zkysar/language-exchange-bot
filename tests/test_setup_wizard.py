@@ -25,6 +25,7 @@ async def wizard(sheets, cache):
 def _make_interaction():
     interaction = MagicMock(spec=discord.Interaction)
     interaction.response = AsyncMock()
+    interaction.followup = AsyncMock()
     return interaction
 
 
@@ -51,8 +52,8 @@ async def test_role_select_callback_success(wizard, sheets, cache):
 
     sheets.update_configuration.assert_called_once_with("admin_role_ids", "[123]", type_="json")
     cache.refresh.assert_called_once_with(force=True)
-    interaction.response.send_message.assert_called_once()
-    msg = interaction.response.send_message.call_args[0][0]
+    interaction.followup.send.assert_called_once()
+    msg = interaction.followup.send.call_args[0][0]
     assert "organizer" in msg
 
 
@@ -68,8 +69,8 @@ async def test_role_select_callback_sheets_error(wizard, sheets, cache):
         interaction = _make_interaction()
         await select.callback(interaction)
 
-    interaction.response.send_message.assert_called_once()
-    msg = interaction.response.send_message.call_args[0][0]
+    interaction.followup.send.assert_called_once()
+    msg = interaction.followup.send.call_args[0][0]
     assert "Failed" in msg
     cache.refresh.assert_not_called()
 
@@ -87,8 +88,8 @@ async def test_channel_select_callback_success(wizard, sheets, cache):
 
     sheets.update_configuration.assert_called_once_with("schedule_channel_id", "789", type_="string")
     cache.refresh.assert_called_once_with(force=True)
-    interaction.response.send_message.assert_called_once()
-    msg = interaction.response.send_message.call_args[0][0]
+    interaction.followup.send.assert_called_once()
+    msg = interaction.followup.send.call_args[0][0]
     assert "<#789>" in msg
 
 
@@ -104,8 +105,8 @@ async def test_channel_select_callback_sheets_error(wizard, sheets, cache):
         interaction = _make_interaction()
         await select.callback(interaction)
 
-    interaction.response.send_message.assert_called_once()
-    msg = interaction.response.send_message.call_args[0][0]
+    interaction.followup.send.assert_called_once()
+    msg = interaction.followup.send.call_args[0][0]
     assert "Failed" in msg
     cache.refresh.assert_not_called()
 
@@ -119,6 +120,6 @@ async def test_channel_select_callback_no_selection(wizard, sheets, cache):
         await select.callback(interaction)
 
     sheets.update_configuration.assert_not_called()
-    interaction.response.send_message.assert_called_once()
-    msg = interaction.response.send_message.call_args[0][0]
+    interaction.followup.send.assert_called_once()
+    msg = interaction.followup.send.call_args[0][0]
     assert "No channel" in msg
