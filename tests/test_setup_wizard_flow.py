@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
 import pytest
@@ -102,6 +102,25 @@ async def test_done_button_stops_view(sheets: MagicMock, cache: MagicMock) -> No
 # ── _RoleSelectForBucket ──────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
+async def test_role_select_defers_before_writing(sheets: MagicMock, cache: MagicMock) -> None:
+    # Regression: ack the component interaction before the slow Sheets write, or
+    # Discord's 3s window expires and the selection silently fails.
+    orig_interaction = make_interaction()
+    view = SetupWizardView(sheets, cache, orig_interaction)
+    select = _RoleSelectForBucket(view, "admin", placeholder="Select admin roles...")
+    role = MagicMock(spec=discord.Role)
+    role.id = 111
+    role.name = "Admins"
+    select._values = [role]
+    calls: list[str] = []
+    interaction = make_interaction()
+    interaction.response.defer = AsyncMock(side_effect=lambda *a, **k: calls.append("defer"))
+    sheets.update_configuration = MagicMock(side_effect=lambda *a, **k: calls.append("write"))
+    await select.callback(interaction)
+    assert calls == ["defer", "write"], f"expected defer before write, got {calls}"
+
+
+@pytest.mark.asyncio
 async def test_role_select_writes_ids_and_refreshes(
     sheets: MagicMock, cache: MagicMock
 ) -> None:
@@ -170,7 +189,7 @@ async def test_channel_select_no_channel_sends_message(
     interaction = make_interaction()
     await select.callback(interaction)
     sheets.update_configuration.assert_not_called()
-    interaction.response.send_message.assert_awaited_once()
+    interaction.followup.send.assert_awaited_once()
 
 
 # ── _ScheduleModal ────────────────────────────────────────────────────────────

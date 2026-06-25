@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
 import pytest
@@ -9,6 +9,25 @@ import pytest
 from src.commands.schedule import build_command
 from src.models.models import EventDate
 from tests.helpers import make_interaction
+
+
+@pytest.mark.asyncio
+async def test_schedule_defers_before_refreshing_cache(cache: MagicMock) -> None:
+    # Regression: the interaction must be acknowledged (deferred) BEFORE the slow
+    # Google Sheets refresh, otherwise Discord's 3s window expires and the user
+    # sees "The application didn't respond" (error 10062 Unknown interaction).
+    calls: list[str] = []
+    interaction = make_interaction()
+    interaction.response.defer = AsyncMock(side_effect=lambda *a, **k: calls.append("defer"))
+    cache.refresh = AsyncMock(side_effect=lambda *a, **k: calls.append("refresh"))
+    cmd = build_command(cache)
+    with (
+        patch("src.commands.schedule.is_host", return_value=True),
+        patch("src.commands.schedule.today_la", return_value=date(2025, 6, 10)),
+    ):
+        await cmd.callback(interaction, weeks=1, date=None, user=None)
+    assert calls == ["defer", "refresh"], f"expected defer before refresh, got {calls}"
+    interaction.followup.send.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -42,7 +61,7 @@ async def test_schedule_specific_date_assigned(cache: MagicMock) -> None:
     interaction = make_interaction()
     with patch("src.commands.schedule.is_host", return_value=True):
         await cmd.callback(interaction, weeks=None, date="2025-06-10", user=None)
-    args, _ = interaction.response.send_message.call_args
+    args, _ = interaction.followup.send.call_args
     assert "<@42>" in args[0]
 
 
@@ -53,7 +72,7 @@ async def test_schedule_specific_date_unassigned(cache: MagicMock) -> None:
     interaction = make_interaction()
     with patch("src.commands.schedule.is_host", return_value=True):
         await cmd.callback(interaction, weeks=None, date="2025-06-10", user=None)
-    args, _ = interaction.response.send_message.call_args
+    args, _ = interaction.followup.send.call_args
     assert "unassigned" in args[0]
 
 
@@ -67,7 +86,7 @@ async def test_schedule_empty_timeline(cache: MagicMock) -> None:
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 10)),
     ):
         await cmd.callback(interaction, weeks=1, date=None, user=None)
-    args, _ = interaction.response.send_message.call_args
+    args, _ = interaction.followup.send.call_args
     assert "Schedule" in args[0]
 
 
@@ -83,8 +102,8 @@ async def test_schedule_weeks_zero_falls_back_to_config_default(cache: MagicMock
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 10)),
     ):
         await cmd.callback(interaction, weeks=0, date=None, user=None)
-    interaction.response.send_message.assert_awaited_once()
-    args, _ = interaction.response.send_message.call_args
+    interaction.followup.send.assert_awaited_once()
+    args, _ = interaction.followup.send.call_args
     assert "2 week" in args[0]
 
 
@@ -99,7 +118,7 @@ async def test_schedule_truncates_output_beyond_60_lines(cache: MagicMock) -> No
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 1)),
     ):
         await cmd.callback(interaction, weeks=12, date=None, user=None)
-    args, _ = interaction.response.send_message.call_args
+    args, _ = interaction.followup.send.call_args
     assert "more" in args[0]
 
 
@@ -119,7 +138,7 @@ async def test_schedule_filters_by_target_user(cache: MagicMock) -> None:
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 1)),
     ):
         await cmd.callback(interaction, weeks=4, date=None, user=target)
-    args, _ = interaction.response.send_message.call_args
+    args, _ = interaction.followup.send.call_args
     assert "<@42>" in args[0]
 
 
@@ -135,7 +154,7 @@ async def test_schedule_no_matches_for_target_user(cache: MagicMock) -> None:
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 1)),
     ):
         await cmd.callback(interaction, weeks=4, date=None, user=target)
-    args, _ = interaction.response.send_message.call_args
+    args, _ = interaction.followup.send.call_args
     assert "no upcoming" in args[0].lower()
 
 
@@ -155,7 +174,7 @@ async def test_schedule_hides_non_meeting_days_when_schedule_set(
         patch("src.commands.schedule.today_la", return_value=date(2026, 4, 1)),
     ):
         await cmd.callback(interaction, weeks=4, date=None, user=None)
-    args, _ = interaction.response.send_message.call_args
+    args, _ = interaction.followup.send.call_args
     text = args[0]
     day_lines = [line for line in text.split("\n") if line.startswith(("✅ ", "❓ "))]
     assert len(day_lines) > 0
@@ -180,7 +199,7 @@ async def test_schedule_shows_all_days_when_schedule_unset(
         patch("src.commands.schedule.today_la", return_value=date(2026, 4, 1)),
     ):
         await cmd.callback(interaction, weeks=1, date=None, user=None)
-    args, _ = interaction.response.send_message.call_args
+    args, _ = interaction.followup.send.call_args
     text = args[0]
     # 1 week = 8 days, all should appear (any Tue/Wed/Thu all present)
     lines = [line for line in text.split("\n") if line.startswith(("✅ ", "❓ "))]
@@ -200,7 +219,7 @@ async def test_schedule_malformed_schedule_falls_back_to_all_days(
         patch("src.commands.schedule.today_la", return_value=date(2026, 4, 1)),
     ):
         await cmd.callback(interaction, weeks=1, date=None, user=None)
-    args, _ = interaction.response.send_message.call_args
+    args, _ = interaction.followup.send.call_args
     text = args[0]
     lines = [line for line in text.split("\n") if line.startswith(("✅ ", "❓ "))]
     # Fall back to showing all days rather than hiding everything
@@ -217,7 +236,7 @@ async def test_schedule_specific_date_external_host(cache: MagicMock) -> None:
     interaction = make_interaction()
     with patch("src.commands.schedule.is_host", return_value=True):
         await cmd.callback(interaction, weeks=None, date="2025-06-10", user=None)
-    args, _ = interaction.response.send_message.call_args
+    args, _ = interaction.followup.send.call_args
     assert "Jane" in args[0]
     assert "not on Discord" in args[0]
     assert "<@" not in args[0]
@@ -234,7 +253,7 @@ async def test_schedule_full_view_shows_external_host(cache: MagicMock) -> None:
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 10)),
     ):
         await cmd.callback(interaction, weeks=1, date=None, user=None)
-    args, _ = interaction.response.send_message.call_args
+    args, _ = interaction.followup.send.call_args
     assert "Jane" in args[0]
     assert "not on Discord" in args[0]
 
@@ -251,7 +270,7 @@ async def test_schedule_defaults_to_ephemeral_for_member(cache: MagicMock) -> No
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 10)),
     ):
         await cmd.callback(interaction, weeks=1, date=None, user=None)
-    _, kwargs = interaction.response.send_message.call_args
+    _, kwargs = interaction.followup.send.call_args
     assert kwargs.get("ephemeral") is True
 
 
@@ -265,7 +284,7 @@ async def test_schedule_defaults_to_ephemeral_for_host(cache: MagicMock) -> None
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 10)),
     ):
         await cmd.callback(interaction, weeks=1, date=None, user=None)
-    _, kwargs = interaction.response.send_message.call_args
+    _, kwargs = interaction.followup.send.call_args
     assert kwargs.get("ephemeral") is True
 
 
@@ -279,5 +298,5 @@ async def test_schedule_public_flag_makes_reply_visible_to_channel(cache: MagicM
         patch("src.commands.schedule.today_la", return_value=date(2025, 6, 10)),
     ):
         await cmd.callback(interaction, weeks=1, date=None, user=None, public=True)
-    _, kwargs = interaction.response.send_message.call_args
+    _, kwargs = interaction.followup.send.call_args
     assert kwargs.get("ephemeral") is False

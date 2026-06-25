@@ -18,6 +18,7 @@ def make_interaction(user_id: int = 1, guild: bool = True) -> MagicMock:
     interaction.response.defer = AsyncMock()
     interaction.response.edit_message = AsyncMock()
     interaction.response.send_modal = AsyncMock()
+    interaction.edit_original_response = AsyncMock()
     interaction.followup = MagicMock()
     interaction.followup.send = AsyncMock()
     return interaction

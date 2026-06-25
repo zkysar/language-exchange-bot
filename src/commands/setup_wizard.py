@@ -149,7 +149,7 @@ class SetupWizardView(ui.View):
         )
         return embed
 
-    async def _show_step(self, interaction: discord.Interaction) -> None:
+    async def _show_step(self, interaction: discord.Interaction, *, deferred: bool = False) -> None:
         self.clear_items()
 
         if self.step == 0:
@@ -174,7 +174,10 @@ class SetupWizardView(ui.View):
             embed = self._build_summary_embed()
             self.add_item(_DoneButton(self))
 
-        await interaction.response.edit_message(embed=embed, view=self)
+        if deferred:
+            await interaction.edit_original_response(embed=embed, view=self)
+        else:
+            await interaction.response.edit_message(embed=embed, view=self)
 
     async def on_timeout(self) -> None:
         self.clear_items()
@@ -222,6 +225,8 @@ class _RoleSelectForBucket(ui.RoleSelect):
         }[bucket]
 
     async def callback(self, interaction: discord.Interaction) -> None:
+        # Ack before the slow Sheets write so Discord's 3s window doesn't expire.
+        await interaction.response.defer(ephemeral=True, thinking=True)
         ids = [r.id for r in self.values]
         try:
             self.wizard.sheets.update_configuration(
@@ -229,12 +234,12 @@ class _RoleSelectForBucket(ui.RoleSelect):
             )
             await self.wizard.cache.refresh(force=True)
         except Exception as e:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"Failed to save roles: {e}", ephemeral=True
             )
             return
         names = ", ".join(r.name for r in self.values) or "*cleared*"
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"Set **{self.bucket}** roles to: {names}", ephemeral=True
         )
 
@@ -251,6 +256,8 @@ class _ChannelSelectForSetting(ui.ChannelSelect):
         self._config_key = config_key
 
     async def callback(self, interaction: discord.Interaction) -> None:
+        # Ack before the slow Sheets write so Discord's 3s window doesn't expire.
+        await interaction.response.defer(ephemeral=True, thinking=True)
         if self.values:
             ch = self.values[0]
             try:
@@ -259,15 +266,15 @@ class _ChannelSelectForSetting(ui.ChannelSelect):
                 )
                 await self.wizard.cache.refresh(force=True)
             except Exception as e:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"Failed to save channel: {e}", ephemeral=True
                 )
                 return
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"Set to {ch.mention}", ephemeral=True
             )
         else:
-            await interaction.response.send_message("No channel selected.", ephemeral=True)
+            await interaction.followup.send("No channel selected.", ephemeral=True)
 
 
 class _ScheduleModal(ui.Modal, title="Customize Announcements"):
@@ -335,12 +342,14 @@ class _ScheduleModal(ui.Modal, title="Customize Announcements"):
             )
             return
 
+        # Ack before the slow Sheets writes + refresh so the 3s window doesn't expire.
+        await interaction.response.defer()
         for key, val, type_ in updates:
             self.wizard.sheets.update_configuration(key, val, type_=type_)
         await self.wizard.cache.refresh(force=True)
 
         self.wizard.step = 3
-        await self.wizard._show_step(interaction)
+        await self.wizard._show_step(interaction, deferred=True)
 
 
 class _CustomizeButton(ui.Button):
@@ -372,9 +381,11 @@ class _MeetingScheduleModal(ui.Modal, title="Set Meeting Schedule"):
         if not ok:
             await interaction.response.send_message(err, ephemeral=True)
             return
+        # Ack before the slow Sheets write + refresh so the 3s window doesn't expire.
+        await interaction.response.defer()
         self.wizard.sheets.update_configuration("meeting_schedule", val, type_="string")
         await self.wizard.cache.refresh(force=True)
-        await self.wizard._show_step(interaction)
+        await self.wizard._show_step(interaction, deferred=True)
 
 
 class _MeetingScheduleButton(ui.Button):

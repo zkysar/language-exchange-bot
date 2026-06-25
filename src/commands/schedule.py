@@ -39,21 +39,29 @@ def build_command(cache: CacheService) -> app_commands.Command:
             )
             return
 
-        await cache.refresh()
-        target_id = str(user.id) if user else None
-
+        # Validate the date before deferring so a format error stays an immediate reply.
+        parsed_date = None
         if date:
             try:
-                d = parse_iso_date(date)
+                parsed_date = parse_iso_date(date)
             except ValueError:
                 await interaction.response.send_message("Invalid date format.", ephemeral=True)
                 return
+
+        # Acknowledge within Discord's 3s window before the slow Sheets refresh,
+        # otherwise the interaction token expires and the user sees no response.
+        await interaction.response.defer(ephemeral=not public)
+        await cache.refresh()
+        target_id = str(user.id) if user else None
+
+        if parsed_date is not None:
+            d = parsed_date
             ev = cache.get_event(d)
             if ev and ev.is_assigned:
                 content = f"**{format_display(d)}** → {_host_display(ev)}"
             else:
                 content = f"**{format_display(d)}** → _unassigned_"
-            await interaction.response.send_message(content, ephemeral=not public)
+            await interaction.followup.send(content, ephemeral=not public)
             return
 
         w = weeks if weeks else cache.config.schedule_window_weeks
@@ -70,7 +78,7 @@ def build_command(cache: CacheService) -> app_commands.Command:
             ]
             matches.sort(key=lambda e: e.date)
             if not matches:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"<@{target_id}> has no upcoming dates in the next {w} week(s).",
                     ephemeral=not public,
                 )
@@ -102,6 +110,6 @@ def build_command(cache: CacheService) -> app_commands.Command:
         text = "\n".join(lines[:60])
         if len(lines) > 60:
             text += f"\n…({len(lines) - 60} more)"
-        await interaction.response.send_message(text, ephemeral=not public)
+        await interaction.followup.send(text, ephemeral=not public)
 
     return schedule
